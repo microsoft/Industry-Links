@@ -217,8 +217,10 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
     $definition = Get-Content $PSScriptRoot/templates/data_source/azureblob/flow_azureblob.json | ConvertFrom-Json
     $parameters = Get-Content $ParametersFile | ConvertFrom-Json
 
-    # Update the connector operation ID
-    $definition.actions.Retrieve_data_from_Azure_Blob_Storage.inputs.host.operationId = $parameters.connectorOperationId.value
+    # Update the Azure Blob Storage parameters
+    $definition.triggers.When_a_file_is_added_or_modified.recurrence = $parameters.trigger.value.scheduled
+    $definition.triggers.When_a_file_is_added_or_modified.inputs.parameters = $parameters.storageParameters
+    $definition.actions.Get_modified_file_content_using_path.inputs.parameters.dataset = $parameters.storageParameters.dataset
 
     # Update data transformation sub-workflow configuration
     $definition.actions.Transform_CSV_data_to_JSON.inputs.host.workflowReferenceName = $TransformWorkflowGuid
