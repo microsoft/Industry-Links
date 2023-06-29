@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    },
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Button",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "title": "Payload",
+              "type": "string",
+              "x-ms-dynamically-added": true,
+              "description": "The array of items to ingest into Dataverse.",
+              "x-ms-content-hint": "TEXT"
+            }
+          },
+          "required": ["payload"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "For_each_item": {
+      "foreach": "@array(json(triggerBody()['payload']))",
+      "actions": {
+        "Ingest_record": {
+          "runAfter": {},
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_commondataserviceforapps",
+              "operationId": "CreateRecord",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+            },
+            "parameters": {},
+            "authentication": {
+              "type": "Raw",
+              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+            }
+          }
+        }
+      },
+      "runAfter": {},
+      "type": "Foreach"
+    },
+    "Flow_output": {
+      "runAfter": {
+        "For_each_item": ["Succeeded"]
+      },
+      "type": "Response",
+      "kind": "PowerApp",
+      "inputs": {
+        "statusCode": 200,
+        "body": {},
+        "schema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    }
+  }
+}

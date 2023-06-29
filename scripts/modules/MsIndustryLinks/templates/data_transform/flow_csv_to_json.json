@@ -1,0 +1,213 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Button",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "title": "CSV string",
+              "type": "string",
+              "x-ms-dynamically-added": true,
+              "description": "Please enter your input",
+              "x-ms-content-hint": "TEXT"
+            }
+          },
+          "required": ["text"]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Reading_data": {
+      "runAfter": {},
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "csvStr",
+            "type": "string",
+            "value": "@{replace(triggerBody()['text'],decodeUriComponent('%0D'),'')}"
+          }
+        ]
+      }
+    },
+    "Split_into_rows": {
+      "runAfter": {
+        "Reading_data": ["Succeeded"]
+      },
+      "type": "Compose",
+      "inputs": "@split(variables('csvStr'),decodeUriComponent('%0A'))"
+    },
+    "Get_column_names": {
+      "runAfter": {
+        "Split_into_rows": ["Succeeded"]
+      },
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "Headers",
+            "type": "array",
+            "value": "@split(outputs('Split_into_rows')?[0],',')"
+          }
+        ]
+      }
+    },
+    "Initialize_JSONObject": {
+      "runAfter": {
+        "Get_column_names": ["Succeeded"]
+      },
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "JSONObject",
+            "type": "object",
+            "value": {}
+          }
+        ]
+      }
+    },
+    "Initialize_JSONArray": {
+      "runAfter": {
+        "Initialize_JSONObject": ["Succeeded"]
+      },
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "JSONArray",
+            "type": "array"
+          }
+        ]
+      }
+    },
+    "Initialize_Loop_Index": {
+      "runAfter": {
+        "Initialize_JSONArray": ["Succeeded"]
+      },
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "Index",
+            "type": "integer",
+            "value": 0
+          }
+        ]
+      }
+    },
+    "Apply_to_each_Data_Row": {
+      "foreach": "@skip(outputs('Split_into_rows'),1)",
+      "actions": {
+        "Current_Data_Row_Array": {
+          "runAfter": {},
+          "type": "Compose",
+          "inputs": "@split(items('Apply_to_each_Data_Row'),',')"
+        },
+        "Clear_JSON_Object": {
+          "runAfter": {
+            "Current_Data_Row_Array": ["Succeeded"]
+          },
+          "type": "SetVariable",
+          "inputs": {
+            "name": "JSONObject",
+            "value": {}
+          }
+        },
+        "Set_Index_to_0": {
+          "runAfter": {
+            "Clear_JSON_Object": ["Succeeded"]
+          },
+          "type": "SetVariable",
+          "inputs": {
+            "name": "Index",
+            "value": 0
+          }
+        },
+        "Apply_to_each_Column": {
+          "foreach": "@variables('Headers')",
+          "actions": {
+            "Add_Column": {
+              "runAfter": {},
+              "type": "Compose",
+              "inputs": "@addProperty(variables('JSONObject'),item(),outputs('Current_Data_Row_Array')[int(variables('Index'))])"
+            },
+            "Set_Object": {
+              "runAfter": {
+                "Add_Column": ["Succeeded"]
+              },
+              "type": "SetVariable",
+              "inputs": {
+                "name": "JSONObject",
+                "value": "@outputs('Add_Column')"
+              }
+            },
+            "Increment_Index": {
+              "runAfter": {
+                "Set_Object": ["Succeeded"]
+              },
+              "type": "IncrementVariable",
+              "inputs": {
+                "name": "Index",
+                "value": 1
+              }
+            }
+          },
+          "runAfter": {
+            "Set_Index_to_0": ["Succeeded"]
+          },
+          "type": "Foreach"
+        },
+        "Append_to_JSONArray": {
+          "runAfter": {
+            "Apply_to_each_Column": ["Succeeded"]
+          },
+          "type": "AppendToArrayVariable",
+          "inputs": {
+            "name": "JSONArray",
+            "value": "@variables('JSONObject')"
+          }
+        }
+      },
+      "runAfter": {
+        "Initialize_Loop_Index": ["Succeeded"]
+      },
+      "type": "Foreach"
+    },
+    "Respond_to_a_PowerApp_or_flow": {
+      "runAfter": {
+        "Apply_to_each_Data_Row": ["Succeeded"]
+      },
+      "type": "Response",
+      "kind": "PowerApp",
+      "inputs": {
+        "statusCode": 200,
+        "body": {
+          "response": "@{string(variables('JSONArray'))}"
+        },
+        "schema": {
+          "type": "object",
+          "properties": {
+            "response": {
+              "title": "Response",
+              "x-ms-dynamically-added": true,
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

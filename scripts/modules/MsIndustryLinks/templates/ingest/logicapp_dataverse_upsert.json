@@ -1,0 +1,98 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    },
+    "organization_url": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "plural_table_name": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "guid_property": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "alternate_keys": {
+      "defaultValue": [],
+      "type": "Array"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "inputs": {
+        "schema": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "kind": "Http",
+      "type": "Request"
+    }
+  },
+  "actions": {
+    "For_each_item": {
+      "actions": {
+        "AlternateKeys": {
+          "inputs": {
+            "from": "@parameters('alternate_keys')",
+            "select": "@{item()['column']}=@{if(equals(item()['type'], 'string'),'''','')}@{items('For_each_item')[item()['property']]}@{if(equals(item()['type'], 'string'),'''','')}"
+          },
+          "runAfter": {},
+          "type": "Select"
+        },
+        "Ingest_record": {
+          "inputs": {
+            "headers": {
+              "accept": "application/json;odata.metadata=full",
+              "organization": "@parameters('organization_url')",
+              "prefer": "return=representation,odata.include-annotations=*"
+            },
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['commondataservice']['connectionId']"
+              }
+            },
+            "method": "patch",
+            "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent(parameters('plural_table_name')))}(@{if(equals(length(parameters('alternate_keys')),0), item()[parameters('guid_property')], join(body('AlternateKeys'), ','))})",
+            "body": {}
+          },
+          "runAfter": {
+            "AlternateKeys": ["Succeeded"]
+          },
+          "type": "ApiConnection"
+        }
+      },
+      "foreach": "@array(triggerBody()['items'])",
+      "runAfter": {},
+      "type": "Foreach"
+    },
+    "Response": {
+      "inputs": {
+        "statusCode": 200
+      },
+      "kind": "Http",
+      "runAfter": {
+        "For_each_item": ["Succeeded"]
+      },
+      "type": "Response"
+    },
+    "Failure_response": {
+      "inputs": {
+        "statusCode": 400
+      },
+      "kind": "Http",
+      "runAfter": {
+        "For_each_item": ["TimedOut", "Failed"]
+      },
+      "type": "Response"
+    }
+  }
+}

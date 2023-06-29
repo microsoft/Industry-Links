@@ -1,0 +1,8 @@
+{
+    "oauth2": {
+        "clientId": "REPLACE_ME_OAUTH2_CLIENT_ID",
+        "refreshUrl": "REPLACE_ME_GENERIC_OAUTH2_REFRESH_URL",
+        "tenantId": "REPLACE_ME_AAD_TENANT_ID",
+        "resourceUri": "REPLACE_ME_AAD_RESOURCE_URI"
+    }
+}

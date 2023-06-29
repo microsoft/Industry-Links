@@ -1,0 +1,73 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    },
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "type": "Request",
+      "kind": "Button",
+      "inputs": {
+        "schema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    }
+  },
+  "actions": {
+    "Retrieve_data_from_Azure_Blob_Storage": {
+      "runAfter": {},
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_azureblob",
+          "operationId": "",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_azureblob"
+        },
+        "parameters": {},
+        "authentication": {
+          "type": "Raw",
+          "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+        }
+      }
+    },
+    "Transform_CSV_data_to_JSON": {
+      "runAfter": {
+        "Retrieve_data_from_Azure_Blob_Storage": ["Succeeded"]
+      },
+      "type": "Workflow",
+      "inputs": {
+        "host": {
+          "workflowReferenceName": ""
+        },
+        "body": {
+          "text": "@body('Retrieve_data_from_Azure_Blob_Storage')"
+        }
+      }
+    },
+    "Ingest_Data_Subflow": {
+      "runAfter": {
+        "Transform_CSV_data_to_JSON": ["Succeeded"]
+      },
+      "type": "Workflow",
+      "inputs": {
+        "host": {
+          "workflowReferenceName": ""
+        },
+        "body": {
+          "payload": "@body('Transform_CSV_data_to_JSON')?['response']"
+        }
+      }
+    }
+  }
+}
