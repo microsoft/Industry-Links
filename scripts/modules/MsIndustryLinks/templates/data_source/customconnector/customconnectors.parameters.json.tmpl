@@ -4,17 +4,44 @@
 
 ////////// POWER AUTOMATE FLOW PARAMETERS //////////
 {
-  // The logical name of the pre-existing connection to the custom connector
-  "connectionReferenceLogicalName": {
-    "value": "contoso_connectionreference_tmpl"
-  },
-  // The logical name of the custom connector
-  "connectorLogicalName": {
-    "value": "contoso_customconnector_tmpl"
-  },
   // The operation ID being used in the custom connector
   "connectorOperationId": {
     "value": "GetTransactions"
+  },
+  // Has the custom connector been certified. Options: true, false
+  "isCustomConnectorCertified": {
+    "value": false
+  },
+
+  ///--- CERTIFIED CUSTOM CONNECTORS ONLY ---///
+
+  // The custom connector API name
+  "apiName": {
+    "value": "contoso_customconnector_tmpl"
+  },
+
+  ///--- NON-CERTIFIED CUSTOM CONNECTORS ONLY ---///
+
+  // The custom connector GUID returned from the creation script
+  // This can also be found by running `pac connector list`
+  "connectorId": {
+    "value": ""
+  },
+  // Authentication details for Azure AD application
+  // associated with Power Platform
+  "tenantId": {
+    "value": ""
+  },
+  "clientId": {
+    "value": ""
+  },
+  "clientSecret": {
+    "value": ""
+  },
+  // The web API endpoint for your Power Platform organisation
+  // Use the following to find your endpoint URL: https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/setup-postman-environment#connect-with-your-dataverse-environment
+  "orgWebApiUrl": {
+    "value": "https://contoso.api.crm.dynamics.com"
   },
 
   ///--- SCHEDULED TRIGGER ONLY ---///

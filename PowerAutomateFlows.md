@@ -24,6 +24,13 @@ Create a parameters file for the data source workflow with the required paramete
 
 The supported workflow data sources include: Azure Blob Storage and Custom Connectors.
 
+The custom connector data source supports both certified and non-certified connectors.
+
+A certifed custom connector allows for the connector to be publicly available for all users across all organizations. See the [Custom Connectors documentation](connectors/power_platform_custom_connector/README.md) to learn more about certifying your custom connector.
+
+A non-certified custom connector is only able to be shared with users in your organization. This is an option for testing your Industry Link while your custom connector is being certified.
+To create an Industry Link with a non-certified connector, an Azure AD application is required to obtain the required configuration details of your custom connector via the Dataverse Web API. This will be configured in [customconnectors.parameters.json.tmpl](scripts/modules/MsIndustryLinks/templates/data_source/customconnector/customconnectors.parameters.json.tmpl). See the [Microsoft Dataverse documentation](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/build-web-applications-server-server-s2s-authentication) to associate an Azure AD application with your Dataverse environment.
+
 ### Configure data sink
 
 Create a parameters file for the Dataverse ingestion workflow with the required parameters for your use case. See [dataverse.parameters.json.tmpl](scripts/modules/MsIndustryLinks/templates/ingest/dataverse.parameters.json.tmpl) for an example.

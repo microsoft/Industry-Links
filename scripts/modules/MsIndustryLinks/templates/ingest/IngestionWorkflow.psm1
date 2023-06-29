@@ -91,7 +91,7 @@ function New-LogicAppIngestionWorkflow {
         [bool] $UseUpsert = $true
     )
 
-    $definitionFileSuffix = $(if ($UseUpsert) {"upsert"} else {"insert"})
+    $definitionFileSuffix = $(if ($UseUpsert) { "upsert" } else { "insert" })
 
     $baseTemplate = Get-Content $PSScriptRoot/templates/logicapp_base.json | ConvertFrom-Json
     $parameters = Get-Content $ParametersFile | ConvertFrom-Json
@@ -124,7 +124,7 @@ function New-FlowIngestionWorkflow {
     $baseTemplate.properties.displayName = "IngestIntoDataverse"
 
     $hasAlternateKeys = $parameters.alternate_keys?.value.length -gt 0
-    $definitionFileSuffix = $(if ($UseUpsert -and $hasAlternateKeys) {"upsert"} else {"insert"})
+    $definitionFileSuffix = $(if ($UseUpsert -and $hasAlternateKeys) { "upsert" } else { "insert" })
     $definition = Get-Content $PSScriptRoot/templates/ingest/flow_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
 
     if (($null -eq $parameters.plural_table_name?.value) -or ($parameters.plural_table_name.value -eq "")) {
@@ -138,7 +138,7 @@ function New-FlowIngestionWorkflow {
         if ($hasAlternateKeys) {
             $filter = @()
             foreach ($key in $parameters.alternate_keys.value) {
-                $quote = if ($key.type -eq "string") {"'"} else {""}
+                $quote = if ($key.type -eq "string") { "'" } else { "" }
                 $filter += "$($key.column) eq $quote@{item()['$($key.property)']}$quote"
             }
             $definition.actions.For_each_item.actions.Find_existing_record.inputs.parameters = @{
@@ -174,7 +174,7 @@ function New-FlowIngestionWorkflow {
         shared_commondataserviceforapps = @{
             runtimeSource = "embedded"
             connection    = @{
-                connectionReferenceLogicalName = $parameters.connectionReferenceLogicalName.value
+                connectionReferenceLogicalName = "shared_commondataserviceforapps_ref"
             }
             api           = @{
                 name = "shared_commondataserviceforapps"

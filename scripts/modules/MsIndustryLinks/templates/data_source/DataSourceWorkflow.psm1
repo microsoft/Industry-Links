@@ -14,6 +14,9 @@
 
     .Parameter DataSource
     The data source of the workflow.
+    The CustomConnector data source has the ability to reference a certified
+    custom connector or a non-certified custom connector which is determined
+    by the parameters file.
     Options: AzureBlobStorage, CustomConnector.
 
     .Parameter BaseTemplate
@@ -88,7 +91,7 @@ function New-DatasourceWorkflow {
 }
 
 function New-FlowDatasourceWorkflow {
-    param(
+    param (
         [Parameter(Mandatory = $true, HelpMessage = "The data source of the workflow. Options: CustomConnector, AzureBlobStorage.")]
         [string] $DataSource,
         [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
@@ -146,7 +149,7 @@ function New-FlowDatasourceWorkflow {
 }
 
 function New-FlowCustomConnectorDatasourceWorkflow {
-    param(
+    param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
         [string] $ParametersFile,
         [Parameter(Mandatory = $true, HelpMessage = "The GUID of the ingestion workflow.")]
@@ -157,11 +160,26 @@ function New-FlowCustomConnectorDatasourceWorkflow {
     $definition = Get-Content $PSScriptRoot/templates/data_source/customconnector/flow_customconnector.json | ConvertFrom-Json
     $parameters = Get-Content $ParametersFile | ConvertFrom-Json
 
+    # Set variables based on whether the custom connector has been certified
+    if ($parameters.isCustomConnectorCertified.value) {
+        $definition.actions.Retrieve_data_using_custom_connector.inputs.host.apiId = "/providers/Microsoft.PowerApps/apis/$($parameters.apiName.value)"
+
+        $apiConfig = @{
+            name = $parameters.apiName.value
+        }
+
+        $connectionReferenceName = "$($parameters.apiName.value)_ref"
+    }
+    else {
+        $connectorIdentifiers = Get-ConnectorIdentifiers -ConnectorId $parameters.connectorId.value -TenantId $parameters.tenantId.value -ClientId $parameters.clientId.value -ClientSecret $parameters.clientSecret.value -OrgWebApiUrl $parameters.orgWebApiUrl.value
+
+        $apiConfig = $connectorIdentifiers
+
+        $connectionReferenceName = "$($connectorIdentifiers.logicalName)_ref"
+    }
+
     # Update the connector operation ID
     $definition.actions.Retrieve_data_using_custom_connector.inputs.host.operationId = $parameters.connectorOperationId.value
-
-    # Update the public connector API reference
-    $definition.actions.Retrieve_data_using_custom_connector.inputs.host.apiId = "/providers/Microsoft.PowerApps/apis/$($parameters.connectorLogicalName.value)"
 
     # Update Dataverse ingestion sub-workflow configuration
     $definition.actions.Ingest_data_subflow.inputs.host.workflowReferenceName = $IngestionWorkflowGuid
@@ -169,13 +187,11 @@ function New-FlowCustomConnectorDatasourceWorkflow {
     $baseTemplate.properties.definition = $definition
     $baseTemplate.properties.connectionReferences = @{
         customconnector = @{
-            runtimeSource = "embedded"
+            runtimeSource = "invoker"
             connection    = @{
-                connectionReferenceLogicalName = $parameters.connectionReferenceLogicalName.value
+                connectionReferenceLogicalName = $connectionReferenceName
             }
-            api           = @{
-                name = $parameters.connectorLogicalName.value
-            }
+            api           = $apiConfig
         }
     }
 
@@ -183,7 +199,7 @@ function New-FlowCustomConnectorDatasourceWorkflow {
 }
 
 function New-FlowAzureBlobStorageDatasourceWorkflow {
-    param(
+    param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
         [string] $ParametersFile,
         [Parameter(Mandatory = $true, HelpMessage = "The GUID of the ingestion workflow.")]
@@ -199,9 +215,6 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
     # Update the connector operation ID
     $definition.actions.Retrieve_data_from_Azure_Blob_Storage.inputs.host.operationId = $parameters.connectorOperationId.value
 
-    # Update the Azure Blob Connector reference
-    $definition.actions.Retrieve_data_from_Azure_Blob_Storage.inputs.host.apiId = "/providers/Microsoft.PowerApps/apis/$($parameters.apiLogicalName.value)"
-
     # Update data transformation sub-workflow configuration
     $definition.actions.Transform_CSV_data_to_JSON.inputs.host.workflowReferenceName = $TransformWorkflowGuid
 
@@ -213,15 +226,72 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
         shared_azureblob = @{
             runtimeSource = "invoker"
             connection    = @{
-                connectionReferenceLogicalName = $parameters.connectionReferenceLogicalName.value
+                connectionReferenceLogicalName = "shared_azureblob_ref"
             }
             api           = @{
-                name = $parameters.apiLogicalName.value
+                name = "shared_azureblob"
             }
         }
     }
 
     return $baseTemplate
+}
+
+function Get-ConnectorIdentifiers {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The custom connector GUID.")]
+        [string] $ConnectorId,
+        [Parameter(Mandatory = $true, HelpMessage = "The tenant ID.")]
+        [String] $TenantId,
+        [Parameter(Mandatory = $true, HelpMessage = "The client ID of the service principal.")]
+        [string] $ClientId,
+        [Parameter(Mandatory = $true, HelpMessage = "The client secret of the service principal.")]
+        [string] $ClientSecret,
+        [Parameter(Mandatory = $true, HelpMessage = "The Dataverse Web API URL.")]
+        [string] $OrgWebApiUrl
+    )
+
+    try {
+        # Get authentication token to access the Dataverse Web API
+        $tokenUrl = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+        $authHeaders = @{
+            "Content-Type" = "application/x-www-form-urlencoded"
+        }
+
+        $authBody =
+        @{
+            client_id     = $ClientId
+            client_secret = $ClientSecret
+            scope         = "$OrgWebApiUrl/.default"
+            grant_type    = 'client_credentials'
+        }
+
+        $authResponse = Invoke-RestMethod -Method Post -Uri $tokenUrl -Headers $authHeaders -Body $authBody -ErrorAction Stop
+        $accessToken = $authResponse.access_token
+    }
+    catch {
+        throw "An error occurred while retrieving the access token. Error: $($_.Exception.Message)"
+    }
+
+    try {
+        # Query custom connector config using the connector ID using the Dataverse Web API
+        $uriConnectorFilter = '$select=name,connectorinternalid'
+        $uri = "$OrgWebApiUrl/api/data/v9.2/connectors($ConnectorId)?$($uriConnectorFilter)"
+        $reqHeaders = @{
+            "Authorization" = "Bearer $accessToken"
+            "Content-Type"  = "application/json"
+        }
+
+        $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $reqHeaders -ErrorAction Stop
+
+        return @{
+            name        = $response.connectorinternalid
+            logicalName = $response.name
+        }
+    }
+    catch {
+        throw "An error occurred while retrieving the custom connector identifiers from Dataverse. Error: $($_.Exception.Message)"
+    }
 }
 
 Export-ModuleMember -Function New-DatasourceWorkflow

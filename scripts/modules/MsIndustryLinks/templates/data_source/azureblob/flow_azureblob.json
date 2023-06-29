@@ -32,7 +32,7 @@
         "host": {
           "connectionName": "shared_azureblob",
           "operationId": "",
-          "apiId": ""
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_azureblob"
         },
         "parameters": {},
         "authentication": {
