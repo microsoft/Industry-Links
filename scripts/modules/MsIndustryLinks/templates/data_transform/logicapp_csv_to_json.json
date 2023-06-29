@@ -1,0 +1,196 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {},
+  "triggers": {
+    "manual": {
+      "inputs": {
+        "schema": {
+          "type": "string"
+        }
+      },
+      "kind": "Http",
+      "type": "Request"
+    }
+  },
+  "actions": {
+    "Apply_to_each_Data_Row": {
+      "actions": {
+        "Append_to_JSONArray": {
+          "inputs": {
+            "name": "JSONArray",
+            "value": "@variables('JSONObject')"
+          },
+          "runAfter": {
+            "Apply_to_each_Column": ["Succeeded"]
+          },
+          "type": "AppendToArrayVariable"
+        },
+        "Apply_to_each_Column": {
+          "actions": {
+            "Add_Column": {
+              "inputs": "@addProperty(variables('JSONObject'), item(), outputs('Current_Data_Row_Array')[int(variables('Index'))])",
+              "runAfter": {},
+              "type": "Compose"
+            },
+            "Increment_Index": {
+              "inputs": {
+                "name": "Index",
+                "value": 1
+              },
+              "runAfter": {
+                "Set_Object": ["Succeeded"]
+              },
+              "type": "IncrementVariable"
+            },
+            "Set_Object": {
+              "inputs": {
+                "name": "JSONObject",
+                "value": "@outputs('Add_Column')"
+              },
+              "runAfter": {
+                "Add_Column": ["Succeeded"]
+              },
+              "type": "SetVariable"
+            }
+          },
+          "foreach": "@variables('Headers')",
+          "runAfter": {
+            "Set_Index_to_0": ["Succeeded"]
+          },
+          "type": "Foreach"
+        },
+        "Clear_JSON_Object": {
+          "inputs": {
+            "name": "JSONObject",
+            "value": {}
+          },
+          "runAfter": {
+            "Current_Data_Row_Array": ["Succeeded"]
+          },
+          "type": "SetVariable"
+        },
+        "Current_Data_Row_Array": {
+          "inputs": "@split(items('Apply_to_each_Data_Row'), ',')",
+          "runAfter": {},
+          "type": "Compose"
+        },
+        "Set_Index_to_0": {
+          "inputs": {
+            "name": "Index",
+            "value": 0
+          },
+          "runAfter": {
+            "Clear_JSON_Object": ["Succeeded"]
+          },
+          "type": "SetVariable"
+        }
+      },
+      "foreach": "@skip(outputs('Split_into_rows'), 1)",
+      "runAfter": {
+        "Initialize_Loop_Index": ["Succeeded"]
+      },
+      "type": "Foreach"
+    },
+    "Get_column_names": {
+      "inputs": {
+        "variables": [
+          {
+            "name": "Headers",
+            "type": "Array",
+            "value": "@split(outputs('Split_into_rows')?[0], ',')"
+          }
+        ]
+      },
+      "runAfter": {
+        "Split_into_rows": ["Succeeded"]
+      },
+      "type": "InitializeVariable"
+    },
+    "Initialize_JSONArray": {
+      "inputs": {
+        "variables": [
+          {
+            "name": "JSONArray",
+            "type": "Array"
+          }
+        ]
+      },
+      "runAfter": {
+        "Initialize_JSONObject": ["Succeeded"]
+      },
+      "type": "InitializeVariable"
+    },
+    "Initialize_JSONObject": {
+      "inputs": {
+        "variables": [
+          {
+            "name": "JSONObject",
+            "type": "Object",
+            "value": {}
+          }
+        ]
+      },
+      "runAfter": {
+        "Get_column_names": ["Succeeded"]
+      },
+      "type": "InitializeVariable"
+    },
+    "Initialize_Loop_Index": {
+      "inputs": {
+        "variables": [
+          {
+            "name": "Index",
+            "type": "Integer",
+            "value": 0
+          }
+        ]
+      },
+      "runAfter": {
+        "Initialize_JSONArray": ["Succeeded"]
+      },
+      "type": "InitializeVariable"
+    },
+    "Reading_data": {
+      "inputs": {
+        "variables": [
+          {
+            "name": "csvStr",
+            "type": "String",
+            "value": "@{replace(triggerBody(), decodeUriComponent('%0D'), '')}"
+          }
+        ]
+      },
+      "runAfter": {},
+      "type": "InitializeVariable"
+    },
+    "Response": {
+      "inputs": {
+        "body": "@variables('JSONArray')",
+        "statusCode": 200
+      },
+      "kind": "Http",
+      "runAfter": {
+        "Apply_to_each_Data_Row": ["Succeeded"]
+      },
+      "type": "Response"
+    },
+    "Failure_response": {
+      "inputs": {
+        "statusCode": 400
+      },
+      "kind": "Http",
+      "runAfter": {
+        "Apply_to_each_Data_Row": ["TimedOut", "Failed"]
+      },
+      "type": "Response"
+    },
+    "Split_into_rows": {
+      "inputs": "@split(variables('csvStr'), decodeUriComponent('%0A'))",
+      "runAfter": {
+        "Reading_data": ["Succeeded"]
+      },
+      "type": "Compose"
+    }
+  }
+}

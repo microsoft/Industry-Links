@@ -1,0 +1,29 @@
+// Use this template to generate a parameters.json file for
+// Flow. Save a copy as 'parameters.json' and keep only
+// parameters required for your use case. Remove all comments.
+
+////////// POWER AUTOMATE FLOW PARAMETERS //////////
+{
+  // The logical name of the pre-existing connection to the custom connector
+  "connectionReferenceLogicalName": {
+    "value": "contoso_connectionreference_tmpl"
+  },
+  // The logical name of the custom connector
+  "connectorLogicalName": {
+    "value": "contoso_customconnector_tmpl"
+  },
+  // The operation ID being used in the custom connector
+  "connectorOperationId": {
+    "value": "GetTransactions"
+  },
+
+  ///--- SCHEDULED TRIGGER ONLY ---///
+  "trigger": {
+    "value": {
+      "scheduled": {
+        "interval": "",
+        "frequency": "{Second/Minute/Hour/Day/Week/Month}"
+      }
+    }
+  }
+}

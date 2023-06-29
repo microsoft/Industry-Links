@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PvsPackageData>
+  <ProviderName>Contoso</ProviderName>
+  <PackageFile>package.zip</PackageFile>
+  <SolutionAnchorName>ContosoIndustryLink.zip</SolutionAnchorName>
+  <StartDate>01/01/2023</StartDate>
+  <EndDate>01/01/2024</EndDate>
+  <SupportedCountries>US,CA</SupportedCountries>
+  <LearnMoreLink>https://www.contoso.com</LearnMoreLink>
+  <Locales>
+    <PackageLocale Code="1033" IsDefault="true">
+      <Logo>logo32x32.png</Logo>
+      <Terms>
+        <PackageTerm File="TermsOfUse.html" />
+      </Terms>
+    </PackageLocale>
+  </Locales>
+</PvsPackageData>

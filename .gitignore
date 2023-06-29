@@ -9,6 +9,10 @@
 *.user
 *.userosscache
 *.sln.docstates
+target/
+**/*/clientConfig.json
+**/output/*
+**/*/parameters.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -61,6 +65,7 @@ BenchmarkDotNet.Artifacts/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+**/Properties/launchSettings.json
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
@@ -131,6 +136,9 @@ $tf/
 _ReSharper*/
 *.[Rr]e[Ss]harper
 *.DotSettings.user
+
+# JustCode is a .NET coding add-in
+.JustCode
 
 # TeamCity is a build add-in
 _TeamCity*

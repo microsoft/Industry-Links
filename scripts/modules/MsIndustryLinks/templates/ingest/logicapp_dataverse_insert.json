@@ -1,0 +1,79 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    },
+    "organization_url": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "plural_table_name": {
+      "defaultValue": "",
+      "type": "String"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "inputs": {
+        "schema": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "kind": "Http",
+      "type": "Request"
+    }
+  },
+  "actions": {
+    "For_each_item": {
+      "actions": {
+        "Ingest_record": {
+          "inputs": {
+            "headers": {
+              "organization": "@parameters('organization_url')",
+              "prefer": "return=representation,odata.include-annotations=*"
+            },
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['commondataservice']['connectionId']"
+              }
+            },
+            "method": "post",
+            "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent(parameters('plural_table_name')))}",
+            "body": {}
+          },
+          "runAfter": {},
+          "type": "ApiConnection"
+        }
+      },
+      "foreach": "@array(triggerBody()['items'])",
+      "runAfter": {},
+      "type": "Foreach"
+    },
+    "Response": {
+      "inputs": {
+        "statusCode": 200
+      },
+      "kind": "Http",
+      "runAfter": {
+        "For_each_item": ["Succeeded"]
+      },
+      "type": "Response"
+    },
+    "Failure_response": {
+      "inputs": {
+        "statusCode": 400
+      },
+      "kind": "Http",
+      "runAfter": {
+        "For_each_item": ["TimedOut", "Failed"]
+      },
+      "type": "Response"
+    }
+  }
+}

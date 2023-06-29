@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    },
+    "$authentication": {
+      "defaultValue": {},
+      "type": "SecureObject"
+    }
+  },
+  "triggers": {
+    "When_events_are_available_in_Event_Hub": {
+      "recurrence": {
+        "interval": 1,
+        "frequency": "Minute"
+      },
+      "splitOn": "@triggerOutputs()?['body']",
+      "type": "OpenApiConnection",
+      "inputs": {
+        "host": {
+          "connectionName": "shared_eventhubs",
+          "operationId": "OnNewEvents",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_eventhubs"
+        },
+        "parameters": {
+          "eventHubName": "transactions",
+          "contentType": "application/json",
+          "consumerGroupName": "$Default",
+          "maximumEventsCount": 50
+        },
+        "authentication": "@parameters('$authentication')"
+      }
+    }
+  },
+  "actions": {
+    "Ingest_data_subflow": {
+      "runAfter": {},
+      "type": "Workflow",
+      "inputs": {
+        "host": {
+          "workflowReferenceName": ""
+        },
+        "body": {
+          "payload": "[@string(@triggerOutputs()?['body/ContentData'])]"
+        }
+      }
+    }
+  }
+}
