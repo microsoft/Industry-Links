@@ -12,38 +12,49 @@
     }
   },
   "triggers": {
-    "manual": {
-      "type": "Request",
-      "kind": "Button",
+    "When_a_file_is_added_or_modified": {
+      "recurrence": {
+        "interval": 1,
+        "frequency": "Minute"
+      },
+      "splitOn": "@triggerOutputs()?['body']",
+      "type": "OpenApiConnection",
       "inputs": {
-        "schema": {
-          "type": "object",
-          "properties": {},
-          "required": []
-        }
+        "host": {
+          "connectionName": "shared_azureblob",
+          "operationId": "OnUpdatedFiles_V2",
+          "apiId": "/providers/Microsoft.PowerApps/apis/shared_azureblob"
+        },
+        "parameters": {
+          "dataset": "",
+          "folderId": "",
+          "maxFileCount": 100
+        },
+        "authentication": "@parameters('$authentication')"
       }
     }
   },
   "actions": {
-    "Retrieve_data_from_Azure_Blob_Storage": {
+    "Get_modified_file_content_using_path": {
       "runAfter": {},
       "type": "OpenApiConnection",
       "inputs": {
         "host": {
           "connectionName": "shared_azureblob",
-          "operationId": "",
+          "operationId": "GetFileContentByPath_V2",
           "apiId": "/providers/Microsoft.PowerApps/apis/shared_azureblob"
         },
-        "parameters": {},
-        "authentication": {
-          "type": "Raw",
-          "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
-        }
+        "parameters": {
+          "dataset": "",
+          "path": "@triggerOutputs()?['body/Path']",
+          "inferContentType": true
+        },
+        "authentication": "@parameters('$authentication')"
       }
     },
     "Transform_CSV_data_to_JSON": {
       "runAfter": {
-        "Retrieve_data_from_Azure_Blob_Storage": ["Succeeded"]
+        "Get_modified_file_content_using_path": ["Succeeded"]
       },
       "type": "Workflow",
       "inputs": {
@@ -51,7 +62,7 @@
           "workflowReferenceName": ""
         },
         "body": {
-          "text": "@body('Retrieve_data_from_Azure_Blob_Storage')"
+          "text": "@body('Get_modified_file_content_using_path')"
         }
       }
     },

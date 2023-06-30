@@ -4,16 +4,17 @@
 
 ////////// POWER AUTOMATE FLOW PARAMETERS //////////
 {
-  // The operation ID being used in the Blob Storage connector
-  "connectorOperationId": {
-    "value": "GetFileContent_V2"
+  // The storage account (dataset) and container (folderId) to check for data files
+  "storageParameters": {
+    "dataset": "mystorageaccount",
+    "folderId": "mycontainer",
+    "maxFileCount": 100
   },
 
-  ///--- SCHEDULED TRIGGER ONLY ---///
   "trigger": {
     "value": {
       "scheduled": {
-        "interval": "",
+        "interval": 1,
         "frequency": "{Second/Minute/Hour/Day/Week/Month}"
       }
     }
