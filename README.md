@@ -37,7 +37,7 @@ Use the following templates to build and publish your own Industry Link! Each us
 
 | Solution                                                                  | Use Case                                                 |
 | ------------------------------------------------------------------------- | -------------------------------------------------------- |
-| [Solution-Aware Power Automate Flows in AppSource](PowerAutomateFlows.md) | Ideal for transfering data between an API and Dataverse. |
+| [Solution-Aware Power Automate Flows in AppSource](PowerAutomateFlows.md) | Ideal for transfering data between an API or file and Dataverse. |
 
 ## Contributing
 
