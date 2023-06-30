@@ -181,6 +181,11 @@ function New-FlowCustomConnectorDatasourceWorkflow {
     # Update the connector operation ID
     $definition.actions.Retrieve_data_using_custom_connector.inputs.host.operationId = $parameters.connectorOperationId.value
 
+    # Add the custom connector parameters if they exist
+    if ($parameters.PSobject.Properties.name -match "customConnectorParameters") {
+        $definition.actions.Retrieve_data_using_custom_connector.inputs.parameters = $parameters.customConnectorParameters.value
+    }
+
     # Update Dataverse ingestion sub-workflow configuration
     $definition.actions.Ingest_data_subflow.inputs.host.workflowReferenceName = $IngestionWorkflowGuid
 
