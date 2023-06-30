@@ -92,7 +92,7 @@ function New-DatasourceWorkflow {
 
 function New-FlowDatasourceWorkflow {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The data source of the workflow. Options: CustomConnector, AzureBlobStorage.")]
+        [Parameter(Mandatory = $true, HelpMessage = "The data source of the workflow. Options: AzureBlobStorage, CustomConnector.")]
         [string] $DataSource,
         [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
         [string] $ParametersFile,
@@ -110,9 +110,10 @@ function New-FlowDatasourceWorkflow {
     }
     elseif ($DataSource -eq "AzureBlobStorage") {
         $template = New-FlowAzureBlobStorageDatasourceWorkflow -ParametersFile $ParametersFile -IngestionWorkflowGuid $IngestionWorkflowGuid -TransformWorkflowGuid $TransformWorkflowGuid
+        $TriggerType = "datasource"
     }
     else {
-        throw "The data source specified is not supported. Please choose from: CustomConnector."
+        throw "The data source specified is not supported. Please choose from: AzureBlobStorage, CustomConnector."
     }
 
     # Set the ID and name of the workflow
@@ -121,7 +122,8 @@ function New-FlowDatasourceWorkflow {
 
     # Configure the trigger
     # By default, the flow configuration is set to manual
-    if ($TriggerType -eq "Scheduled") {
+    $triggerTypeLower = $TriggerType.ToLower()
+    if ($triggerTypeLower -eq "scheduled") {
         $parameters = Get-Content $ParametersFile | ConvertFrom-Json
 
         $validFrequency = @("Second", "Minute", "Hour", "Day", "Week", "Month")
@@ -141,7 +143,10 @@ function New-FlowDatasourceWorkflow {
             }
         }
     }
-    elseif ($TriggerType -ne "Manual") {
+    elseif ($triggerTypeLower -eq "datasource") {
+        # Nothing to do, configured with data source
+    }
+    elseif ($triggerTypeLower -ne "manual") {
         throw "The trigger type specified is not valid. Please choose from: Manual, Scheduled."
     }
 
@@ -231,7 +236,7 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
     $baseTemplate.properties.definition = $definition
     $baseTemplate.properties.connectionReferences = @{
         shared_azureblob = @{
-            runtimeSource = "invoker"
+            runtimeSource = "embedded"
             connection    = @{
                 connectionReferenceLogicalName = "shared_azureblob_ref"
             }

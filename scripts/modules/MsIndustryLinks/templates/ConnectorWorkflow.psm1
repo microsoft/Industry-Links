@@ -83,7 +83,7 @@ function New-MsIndustryLink {
 
     if ($DataSource -eq "AzureBlobStorage") {
         # Create transformation workflow template
-        [String] $TransformWorkflowGuid = New-FlowTransformCSVtoJSON -OutputDirectory $OutputDirectory
+        [String] $TransformWorkflowGuid = New-TransformWorkflow -BaseTemplate $BaseTemplate -SourceFormat CSV -OutputDirectory $OutputDirectory
     }
 
     # Create data source workflow template
