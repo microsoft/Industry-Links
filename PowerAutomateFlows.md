@@ -20,7 +20,7 @@ Import-Module -Name MsIndustryLinks
 
 ### Configure data source
 
-Create a parameters file for the data source workflow with the required parameters for your use case. See [customconnectors.parameters.json.tmpl](scripts/modules/MsIndustryLinks/templates/data_source/customconnector/customconnectors.parameters.json.tmpl) or [azureblob.parameters.json.tmpl](scripts/modules/MsIndustryLinks/templates/data_source/azureblob/azureblob.parameters.json.tmpl) for examples.
+Create a workflow configuration file for the data source workflow with the required parameters for your use case. See [workflow.json.tmpl](scripts/modules/MsIndustryLinks/templates/workflow.json.tmpl) for an example.
 
 The supported workflow data sources include: Azure Blob Storage and Custom Connectors.
 
@@ -29,7 +29,7 @@ The custom connector data source supports both certified and non-certified conne
 A certifed custom connector allows for the connector to be publicly available for all users across all organizations. See the [Custom Connectors documentation](connectors/power_platform_custom_connector/README.md) to learn more about certifying your custom connector.
 
 A non-certified custom connector is only able to be shared with users in your organization. This is an option for testing your Industry Link while your custom connector is being certified.
-To create an Industry Link with a non-certified connector, an Azure AD application is required to obtain the required configuration details of your custom connector via the Dataverse Web API. This will be configured in [customconnectors.parameters.json.tmpl](scripts/modules/MsIndustryLinks/templates/data_source/customconnector/customconnectors.parameters.json.tmpl). See the [Microsoft Dataverse documentation](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/build-web-applications-server-server-s2s-authentication) to associate an Azure AD application with your Dataverse environment.
+To create an Industry Link with a non-certified connector, an Azure AD application is required to obtain the required configuration details of your custom connector via the Dataverse Web API. This will be configured in an [authentication config file](scripts/modules/MsIndustryLinks/templates/auth.json.tmpl). See the [Microsoft Dataverse documentation](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/build-web-applications-server-server-s2s-authentication) to associate an Azure AD application with your Dataverse environment.
 
 ### Configure data sink
 
@@ -49,19 +49,34 @@ Please refer to the [Create a solution publisher](https://learn.microsoft.com/en
 
 ### Generate Industry Link
 
-**Example 1: Generate Industry Link with custom connector as data source**
+### Example 1: Generate an Industry Link package with a certified custom connector as the data source
 
 ```powershell
 New-MsIndustryLink
     -DataSource CustomConnector
-    -BaseTemplate "Flow"
-    -DataSourceParametersFile datasource.parameters.json
+    -BaseTemplate Flow
+    -WorkflowConfigFile workflow.json
     -DataverseParametersFile dataverse.parameters.json
     -OutputDirectory output
     -MappingDefinitionFile mapping.json
+    -PackageParametersFile package.parameters.json
     -UseUpsert $false
     -TriggerType Scheduled
+```
+
+### Example 2: Generate an Industry Link package with Azure Blob Storage as the data source
+
+```powershell
+New-MsIndustryLink
+    -DataSource AzureBlobStorage
+    -BaseTemplate Flow
+    -WorkflowConfigFile workflow.json
+    -DataverseParametersFile dataverse.parameters.json
+    -OutputDirectory output
+    -MappingDefinitionFile mapping.json
     -PackageParametersFile package.parameters.json
+    -UseUpsert $false
+    -TriggerType Scheduled
 ```
 
 The output directory will contain the Power Platform solution containing the Industry Link workflows that pass data from the source to the sink (Dataverse). A solution zip file is also in the output directory ready to be imported into your Dataverse environment and published to AppSource.

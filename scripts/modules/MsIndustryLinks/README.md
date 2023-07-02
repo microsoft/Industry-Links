@@ -14,7 +14,7 @@ The **MsIndustryLinks** module contains cmdlets to generate workflow templates (
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | [New-AppSourceOffer](appsource/New-AppSourceOffer.md)                      | Create an AppSource offer in Partner Center                        |
 | [New-AppSourcePackage](appsource/New-AppSourcePackage.md)                  | Create an AppSource package from managed solution                  |
-| [New-DatasourceWorkflow](templates/data_source/New-DatasourceWorkflow.md)  | Generate an end-to-end workflow template for specified data source |
+| [New-DataSourceWorkflow](templates/data_source/New-DataSourceWorkflow.md)  | Generate an end-to-end workflow template for specified data source |
 | [New-IngestionWorkflow](templates/ingest/New-IngestionWorkflow.md)         | Generate an ingestion workflow template                            |
 | [New-MsIndustryLink](templates/New-MsIndustryLink.md)                      | Generate a Microsoft Industry Link                                 |
 | [New-TransformWorkflow](templates/data_transform/New-TransformWorkflow.md) | Generate a transform workflow template                             |

@@ -10,13 +10,14 @@ Generates a deployable package that contains a set of workflows that retrieves d
 New-MsIndustryLink
     -DataSource <String>
     -BaseTemplate <String>
-    -DataSourceParametersFile <String>
+    -WorkflowConfigFile <String>
     -DataverseParametersFile <String>
     -OutputDirectory <String>
     -MappingDefinitionFile <String>
     -PackageParametersFile <String>
     [-UseUpsert] <Boolean>
     [-TriggerType] <String>
+    [-AuthConfigFile] <String>
 ```
 
 ## Description
@@ -25,13 +26,13 @@ Generates a set of workflow templates that will insert or upsert data into a Dat
 
 ## Examples
 
-### Example 1: Generate an Industry Link package with an API as the data source
+### Example 1: Generate an Industry Link package with a certified custom connector as the data source
 
 ```powershell
 New-MsIndustryLink
     -DataSource CustomConnector
     -BaseTemplate Flow
-    -DataSourceParametersFile datasource.parameters.json
+    -WorkflowConfigFile workflow.json
     -DataverseParametersFile dataverse.parameters.json
     -OutputDirectory output
     -MappingDefinitionFile mapping.json
@@ -46,7 +47,7 @@ New-MsIndustryLink
 New-MsIndustryLink
     -DataSource AzureBlobStorage
     -BaseTemplate Flow
-    -DataSourceParametersFile datasource.parameters.json
+    -WorkflowConfigFile workflow.json
     -DataverseParametersFile dataverse.parameters.json
     -OutputDirectory output
     -MappingDefinitionFile mapping.json
@@ -77,9 +78,9 @@ The base template to use for generating the customized workflow.
 | Accepted values: | Flow, LogicApp                                                                                                        |
 | Default value:   | None                                                                                                                  |
 
-### -DataSourceParametersFile
+### -WorkflowConfigFile
 
-The path to the parameters file (JSON) that will be used to customize the parameters in the data source workflow template.
+The workflow configuration file that defines the trigger, the data source, the data sink and any transformations that will be applied.
 
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -135,6 +136,16 @@ If set to true, the workflow will upsert records. Otherwise, it will insert reco
 ### -TriggerType
 
 The type of trigger to use for the Industry Link.
+
+|                  |                                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Type:            | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
+| Accepted values: | Manual, Scheduled                                                                                                     |
+| Default value:   | Manual                                                                                                                |
+
+### -AuthConfigFile
+
+The path to the authentication configuration JSON file. This file is only required if the data source is a non-certified custom connector. Provide the tenantId, clientId, clientSecret, and orgWebApiUrl for the service principal that will be used to authenticate with the Dataverse API.
 
 |                  |                                                                                                                       |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |

@@ -12,142 +12,129 @@
     source and any workflows called by this workflow. This function
     will generate a Power Automate Flow template.
 
-    .Parameter DataSource
-    The data source of the workflow.
-    The CustomConnector data source has the ability to reference a certified
-    custom connector or a non-certified custom connector which is determined
-    by the parameters file.
-    Options: AzureBlobStorage, CustomConnector.
+    .Parameter WorkflowConfigFile
+    The workflow configuration file that defines the trigger, the data
+    source, the data sink and any transformations that will be applied.
 
-    .Parameter BaseTemplate
-    The base template to use for generating the customized workflow.
-    Options: Flow.
+    .Parameter TemplateDirectory
+    The directory containing the workflow templates and where the data
+    source workflow template will be saved.
 
-    .Parameter IngestionWorkflowGuid
-    The GUID of the ingestion workflow that will be used to ingest data into
-    Dataverse. This is returned by the New-IngestionWorkflow function but can
-    also be found in the `name` attribute of the ingestion workflow template.
+    .Parameter WorkflowGuids
+    The mapping of workflow templates to GUIDs. If not provided, the
+    workflow GUIDs will be retrieved from each workflow template
+    in the template directory.
 
-    .Parameter TransformWorkflowGuid
-    The GUID of the transformation workflow that will be used to transform
-    data into a JSON array. This is returned by the New-TransformWorkflow
-    function but can also be found in the `name` attribute of the transformation
-    workflow template. If not provided, the transformation workflow will
-    not be included.
-
-    .Parameter OutputDirectory
-    The directory where the data source workflow template will be saved. If it
-    doesn't exist, it will be created.
-
-    .Parameter ParametersFile
-    The path to the parameters file (JSON) that will be used to customize the
-    data source parameters in the template.
-
-    .Parameter TriggerType
-    The type of trigger to use for the workflow.
-    Default: Manual. Options: Manual, Scheduled.
+    .Parameter AuthConfigFile
+    The path to the authentication configuration JSON file. This file is only
+    required if the data source is a non-certified custom connector. Provide
+    the tenantId, clientId, clientSecret, and orgWebApiUrl for the service
+    principal that will be used to authenticate with the Dataverse API.
 
     .Example
-    # Generate a workflow template with an API as the data source.
-    New-DatasourceWorkflow -DataSource CustomConnector -BaseTemplate "Flow" -IngestionWorkflowGuid "41e38419-3821-4686-ae88-ec3400668513" -ParametersFile parameters.json -OutputDirectory output -TriggerType Scheduled
-
     # Generate a workflow template with Azure Blob Storage as the data source.
-    New-DatasourceWorkflow -DataSource AzureBlobStorage -BaseTemplate "Flow" -IngestionWorkflowGuid "41e38419-3821-4686-ae88-ec3400668513" -TransformWorkflowGuid "9bd420a7-5ad4-440f-807c-e5b0f479dc58" -ParametersFile parameters.json -OutputDirectory output -TriggerType Scheduled
+    New-DataSourceWorkflow -WorkflowConfigFile workflow.json -TemplateDirectory templates
+
+    # Generate a workflow template with a non-certified custom connector as the data source.
+    New-DataSourceWorkflow -WorkflowConfigFile workflow.json -TemplateDirectory templates -AuthConfigFile auth.json
 #>
-function New-DatasourceWorkflow {
+function New-DataSourceWorkflow {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The data source of the workflow. Options: CustomConnector, AzureBlobStorage.")]
-        [string] $DataSource,
-        [Parameter(Mandatory = $true, HelpMessage = "The base template to use for the workflow. Options: Flow.")]
-        [string] $BaseTemplate,
-        [Parameter(Mandatory = $true, HelpMessage = "The Dataverse ingestion workflow template GUID.")]
-        [string] $IngestionWorkflowGuid,
-        [Parameter(Mandatory = $false, HelpMessage = "The data transformation workflow template GUID.")]
-        [string] $TransformWorkflowGuid,
-        [Parameter(Mandatory = $true, HelpMessage = "The directory path where the workflow template will be saved.")]
-        [string] $OutputDirectory,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
-        [string] $ParametersFile,
-        [Parameter(Mandatory = $false, HelpMessage = "The type of trigger to use for the workflow. Options: Manual, Scheduled.")]
-        [string] $TriggerType = "Manual"
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
+        [string] $WorkflowConfigFile,
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the directory that contains the workflow templates.")]
+        [string] $TemplateDirectory,
+        [Parameter(Mandatory = $false, HelpMessage = "The mapping of workflow templates to GUIDs.")]
+        [hashtable] $WorkflowGuids,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
+        [string] $AuthConfigFile
     )
 
-    $baseApp = $BaseTemplate.ToLower()
-    if ($baseApp -eq "logicapp") {
+    $workflowConfig = Get-Content $WorkflowConfigFile | ConvertFrom-Json
+    $workflowType = $workflowConfig.workflowType.ToLower()
+
+    if ($workflowType -eq "logicapp") {
         throw "Logic App functionality not yet implemented. Please choose from: Flow."
     }
-    elseif ($baseApp -eq "flow") {
-        $template = New-FlowDatasourceWorkflow -DataSource $DataSource -ParametersFile $ParametersFile -TriggerType $TriggerType -IngestionWorkflowGuid $IngestionWorkflowGuid -TransformWorkflowGuid $TransformWorkflowGuid
+    elseif ($workflowType -eq "flow") {
+        if ($null -eq $WorkflowGuids -or $WorkflowGuids.Count -eq 0) {
+            $WorkflowGuids = Get-WorkflowGuids -TemplateDirectory $TemplateDirectory -WorkflowConfig $workflowConfig
+        }
+        $template = New-FlowDatasourceWorkflow -WorkflowConfig $workflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
         $templateFilename = $template.properties.displayName
     }
     else {
-        throw "The base template, $BaseTemplate, is not supported. Please choose from: Flow."
+        throw "The workflow type, $($workflowConfig.workflowType), is not supported. Please choose from: Flow."
     }
 
-    if (!(Test-Path $OutputDirectory)) {
-        New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+    if (!(Test-Path $TemplateDirectory)) {
+        New-Item -ItemType Directory -Force -Path $TemplateDirectory | Out-Null
     }
-    $template | ConvertTo-Json -Depth 20 | Out-File "$OutputDirectory/$templateFilename.json"
+    $template | ConvertTo-Json -Depth 20 | Out-File "$TemplateDirectory/$templateFilename.json"
 }
 
 function New-FlowDatasourceWorkflow {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The data source of the workflow. Options: AzureBlobStorage, CustomConnector.")]
-        [string] $DataSource,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
-        [string] $ParametersFile,
-        [Parameter(Mandatory = $false, HelpMessage = "The type of trigger to use for the workflow. Options: Manual, Scheduled.")]
-        [string] $TriggerType = "Manual",
-        [Parameter(Mandatory = $true, HelpMessage = "The GUID of the ingestion workflow.")]
-        [string] $IngestionWorkflowGuid,
-        [Parameter(Mandatory = $false, HelpMessage = "The transformation workflow template GUID.")]
-        [string] $TransformWorkflowGuid
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The mapping of workflow templates to GUIDs.")]
+        [hashtable] $WorkflowGuids,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
+        [string] $AuthConfigFile
     )
 
+    $dataSource = $WorkflowConfig.dataSource.type.ToLower()
+    $workflowName = $WorkflowConfig.dataSource.name
+    $triggerType = $WorkflowConfig.trigger.type.ToLower()
+
     # Configure the data source
-    if ($DataSource -eq "CustomConnector") {
-        $template = New-FlowCustomConnectorDatasourceWorkflow -ParametersFile $ParametersFile -IngestionWorkflowGuid $IngestionWorkflowGuid
+    if ($dataSource -eq "customconnector") {
+        $template = New-FlowCustomConnectorDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
     }
-    elseif ($DataSource -eq "AzureBlobStorage") {
-        $template = New-FlowAzureBlobStorageDatasourceWorkflow -ParametersFile $ParametersFile -IngestionWorkflowGuid $IngestionWorkflowGuid -TransformWorkflowGuid $TransformWorkflowGuid
-        $TriggerType = "datasource"
+    elseif ($dataSource -eq "azureblobstorage") {
+        $template = New-FlowAzureBlobStorageDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
+        $triggerType = "datasource"
     }
     else {
-        throw "The data source specified is not supported. Please choose from: AzureBlobStorage, CustomConnector."
+        throw "The data source, $($WorkflowConfig.dataSource.type), is not supported. Please choose from: AzureBlobStorage, CustomConnector."
     }
 
     # Set the ID and name of the workflow
     $template.name = [guid]::NewGuid().ToString()
-    $template.properties.displayName = "GetDataFrom$DataSource"
+    if ($null -ne $workflowName -and $workflowName -ne "") {
+        $template.properties.displayName = $workflowName
+    }
+    else {
+        $template.properties.displayName = "GetDataFrom$dataSource"
+    }
 
     # Configure the trigger
     # By default, the flow configuration is set to manual
-    $triggerTypeLower = $TriggerType.ToLower()
-    if ($triggerTypeLower -eq "scheduled") {
-        $parameters = Get-Content $ParametersFile | ConvertFrom-Json
-
+    if ($triggerType -eq "scheduled") {
         $validFrequency = @("Second", "Minute", "Hour", "Day", "Week", "Month")
 
-        $interval = $parameters.trigger.value.scheduled.interval
-        $frequency = $parameters.trigger.value.scheduled.frequency
+        $interval = $WorkflowConfig.trigger.parameters.interval
+        $frequency = $WorkflowConfig.trigger.parameters.frequency
 
         if ($frequency -notin $validFrequency) {
             throw "The frequency specified is not valid. Please choose from: $validFrequency"
         }
 
         $template.properties.definition.triggers = @{
-            type       = "Recurrence"
-            recurrence = @{
-                frequency = $frequency
-                interval  = $interval
+            Recurrence = @{
+                type       = "Recurrence"
+                recurrence = @{
+                    frequency = $frequency
+                    interval  = $interval
+                }
             }
         }
     }
-    elseif ($triggerTypeLower -eq "datasource") {
+    elseif ($triggerType -eq "datasource") {
         # Nothing to do, configured with data source
     }
-    elseif ($triggerTypeLower -ne "manual") {
-        throw "The trigger type specified is not valid. Please choose from: Manual, Scheduled."
+    elseif ($triggerType -ne "manual") {
+        throw "The trigger type, $($WorkflowConfig.trigger.type), is not valid. Please choose from: Manual, Scheduled."
     }
 
     return $template
@@ -155,28 +142,35 @@ function New-FlowDatasourceWorkflow {
 
 function New-FlowCustomConnectorDatasourceWorkflow {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
-        [string] $ParametersFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The GUID of the ingestion workflow.")]
-        [string] $IngestionWorkflowGuid
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The mapping of workflow templates to GUIDs.")]
+        [hashtable] $WorkflowGuids,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
+        [string] $AuthConfigFile
     )
 
     $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
     $definition = Get-Content $PSScriptRoot/templates/data_source/customconnector/flow_customconnector.json | ConvertFrom-Json
-    $parameters = Get-Content $ParametersFile | ConvertFrom-Json
+    $dataSourceConfig = $WorkflowConfig.dataSource
 
     # Set variables based on whether the custom connector has been certified
-    if ($parameters.isCustomConnectorCertified.value) {
-        $definition.actions.Retrieve_data_using_custom_connector.inputs.host.apiId = "/providers/Microsoft.PowerApps/apis/$($parameters.apiName.value)"
+    if ($dataSourceConfig.isCertified) {
+        $definition.actions.Retrieve_data_using_custom_connector.inputs.host.apiId = "/providers/Microsoft.PowerApps/apis/$($dataSourceConfig.connection.apiName)"
 
         $apiConfig = @{
-            name = $parameters.apiName.value
+            name = $dataSourceConfig.connection.apiName
         }
 
-        $connectionReferenceName = "$($parameters.apiName.value)_ref"
+        $connectionReferenceName = "$($dataSourceConfig.connection.apiName)_ref"
     }
     else {
-        $connectorIdentifiers = Get-ConnectorIdentifiers -ConnectorId $parameters.connectorId.value -TenantId $parameters.tenantId.value -ClientId $parameters.clientId.value -ClientSecret $parameters.clientSecret.value -OrgWebApiUrl $parameters.orgWebApiUrl.value
+        if ($null -eq $AuthConfigFile -or $AuthConfigFile -eq "") {
+            throw "The authentication configuration file (-AuthConfigFile) is required for uncertified custom connectors."
+        }
+
+        $authConfig = Get-Content $AuthConfigFile | ConvertFrom-Json
+        $connectorIdentifiers = Get-ConnectorIdentifiers -ConnectorId $dataSourceConfig.connection.connectorId -AuthConfig $authConfig
 
         $apiConfig = $connectorIdentifiers
 
@@ -184,20 +178,21 @@ function New-FlowCustomConnectorDatasourceWorkflow {
     }
 
     # Update the connector operation ID
-    $definition.actions.Retrieve_data_using_custom_connector.inputs.host.operationId = $parameters.connectorOperationId.value
+    $definition.actions.Retrieve_data_using_custom_connector.inputs.host.operationId = $dataSourceConfig.connection.operationId
 
     # Add the custom connector parameters if they exist
-    if ($parameters.PSobject.Properties.name -match "customConnectorParameters") {
-        $definition.actions.Retrieve_data_using_custom_connector.inputs.parameters = $parameters.customConnectorParameters.value
+    if ($null -ne $dataSourceConfig.parameters) {
+        $definition.actions.Retrieve_data_using_custom_connector.inputs.parameters = $dataSourceConfig.parameters
     }
 
     # Update Dataverse ingestion sub-workflow configuration
-    $definition.actions.Ingest_data_subflow.inputs.host.workflowReferenceName = $IngestionWorkflowGuid
+    $dataSinkWorkflowGuid = $WorkflowGuids[$WorkflowConfig.dataSink.name]
+    $definition.actions.Ingest_data_subflow.inputs.host.workflowReferenceName = $dataSinkWorkflowGuid
 
     $baseTemplate.properties.definition = $definition
     $baseTemplate.properties.connectionReferences = @{
         customconnector = @{
-            runtimeSource = "invoker"
+            runtimeSource = "embedded"
             connection    = @{
                 connectionReferenceLogicalName = $connectionReferenceName
             }
@@ -210,28 +205,28 @@ function New-FlowCustomConnectorDatasourceWorkflow {
 
 function New-FlowAzureBlobStorageDatasourceWorkflow {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
-        [string] $ParametersFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The GUID of the ingestion workflow.")]
-        [string] $IngestionWorkflowGuid,
-        [Parameter(Mandatory = $true, HelpMessage = "The transformation workflow template GUID.")]
-        [string] $TransformWorkflowGuid
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The mapping of workflow templates to GUIDs.")]
+        [hashtable] $WorkflowGuids
     )
 
     $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
     $definition = Get-Content $PSScriptRoot/templates/data_source/azureblob/flow_azureblob.json | ConvertFrom-Json
-    $parameters = Get-Content $ParametersFile | ConvertFrom-Json
+    $dataSourceConfig = $WorkflowConfig.dataSource
 
     # Update the Azure Blob Storage parameters
-    $definition.triggers.When_a_file_is_added_or_modified.recurrence = $parameters.trigger.value.scheduled
-    $definition.triggers.When_a_file_is_added_or_modified.inputs.parameters = $parameters.storageParameters
-    $definition.actions.Get_modified_file_content_using_path.inputs.parameters.dataset = $parameters.storageParameters.dataset
+    $definition.triggers.When_a_file_is_added_or_modified.recurrence = $WorkflowConfig.trigger.parameters
+    $definition.triggers.When_a_file_is_added_or_modified.inputs.parameters = $dataSourceConfig.parameters
+    $definition.actions.Get_modified_file_content_using_path.inputs.parameters.dataset = $dataSourceConfig.parameters.dataset
 
     # Update data transformation sub-workflow configuration
-    $definition.actions.Transform_CSV_data_to_JSON.inputs.host.workflowReferenceName = $TransformWorkflowGuid
+    $transformWorkflowGuid = $WorkflowGuids[$WorkflowConfig.dataTransform.name]
+    $definition.actions.Transform_CSV_data_to_JSON.inputs.host.workflowReferenceName = $transformWorkflowGuid
 
     # Update data ingestion sub-workflow configuration
-    $definition.actions.Ingest_Data_Subflow.inputs.host.workflowReferenceName = $IngestionWorkflowGuid
+    $dataSinkWorkflowGuid = $WorkflowGuids[$WorkflowConfig.dataSink.name]
+    $definition.actions.Ingest_Data_Subflow.inputs.host.workflowReferenceName = $dataSinkWorkflowGuid
 
     $baseTemplate.properties.definition = $definition
     $baseTemplate.properties.connectionReferences = @{
@@ -253,28 +248,24 @@ function Get-ConnectorIdentifiers {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The custom connector GUID.")]
         [string] $ConnectorId,
-        [Parameter(Mandatory = $true, HelpMessage = "The tenant ID.")]
-        [String] $TenantId,
-        [Parameter(Mandatory = $true, HelpMessage = "The client ID of the service principal.")]
-        [string] $ClientId,
-        [Parameter(Mandatory = $true, HelpMessage = "The client secret of the service principal.")]
-        [string] $ClientSecret,
-        [Parameter(Mandatory = $true, HelpMessage = "The Dataverse Web API URL.")]
-        [string] $OrgWebApiUrl
+        [Parameter(Mandatory = $true, HelpMessage = "The authentication configuration object.")]
+        [object] $AuthConfig
     )
+
+    $orgWebApiUrl = $AuthConfig.orgWebApiUrl
 
     try {
         # Get authentication token to access the Dataverse Web API
-        $tokenUrl = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
+        $tokenUrl = "https://login.microsoftonline.com/$($AuthConfig.tenantId)/oauth2/v2.0/token"
         $authHeaders = @{
             "Content-Type" = "application/x-www-form-urlencoded"
         }
 
         $authBody =
         @{
-            client_id     = $ClientId
-            client_secret = $ClientSecret
-            scope         = "$OrgWebApiUrl/.default"
+            client_id     = $AuthConfig.clientId
+            client_secret = $AuthConfig.clientSecret
+            scope         = "$orgWebApiUrl/.default"
             grant_type    = 'client_credentials'
         }
 
@@ -288,7 +279,7 @@ function Get-ConnectorIdentifiers {
     try {
         # Query custom connector config using the connector ID using the Dataverse Web API
         $uriConnectorFilter = '$select=name,connectorinternalid'
-        $uri = "$OrgWebApiUrl/api/data/v9.2/connectors($ConnectorId)?$($uriConnectorFilter)"
+        $uri = "$orgWebApiUrl/api/data/v9.2/connectors($ConnectorId)?$($uriConnectorFilter)"
         $reqHeaders = @{
             "Authorization" = "Bearer $accessToken"
             "Content-Type"  = "application/json"
@@ -306,4 +297,45 @@ function Get-ConnectorIdentifiers {
     }
 }
 
-Export-ModuleMember -Function New-DatasourceWorkflow
+function Get-WorkflowGuids {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the directory that contains the workflow templates.")]
+        [string] $TemplateDirectory,
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig
+    )
+
+    $workflowGuids = @{}
+    $templatePaths = Get-ChildItem -Path $TemplateDirectory -Filter "*.json"
+    foreach ($templatePath in $templatePaths) {
+        $template = Get-Content $templatePath | ConvertFrom-Json
+
+        if ($null -ne $template.name) {
+            try {
+                $workflowName = $template.properties.displayName
+            }
+            catch {
+                $workflowName = $templatePath.BaseName
+            }
+
+            $workflowGuids[$workflowName] = $template.name
+        }
+    }
+
+    # Validate the workflow template files exist and are populated with a GUID
+    $templates = "dataTransform", "dataSink"
+    foreach ($template in $templates) {
+        if ($null -eq $WorkflowConfig.$template -or $null -eq $WorkflowConfig.$template.name) {
+            continue
+        }
+
+        $workflowName = $WorkflowConfig.$template.name
+        if ($null -eq $workflowGuids[$workflowName]) {
+            throw "No GUID found for the workflow, $workflowName."
+        }
+    }
+
+    return $workflowGuids
+}
+
+Export-ModuleMember -Function New-DataSourceWorkflow
