@@ -269,8 +269,8 @@ function Get-ConnectorIdentifiers {
             grant_type    = 'client_credentials'
         }
 
-        $authResponse = Invoke-RestMethod -Method Post -Uri $tokenUrl -Headers $authHeaders -Body $authBody -ErrorAction Stop
-        $accessToken = $authResponse.access_token
+        $authResponse = Invoke-WebRequest -Method Post -Uri $tokenUrl -Headers $authHeaders -Body $authBody -ErrorAction Stop
+        $accessToken = ($authResponse.Content | ConvertFrom-Json).access_token
     }
     catch {
         throw "An error occurred while retrieving the access token. Error: $($_.Exception.Message)"
