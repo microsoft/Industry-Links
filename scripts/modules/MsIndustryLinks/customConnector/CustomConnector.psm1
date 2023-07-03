@@ -1,66 +1,109 @@
-# Copyright (c) Microsoft Corporation.
+# Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
-####################################################################################################
-# This script generates and configures the files required to create a Power Platform custom        #
-# connector and outputs to the chosen directory.                                                   #
-####################################################################################################
+function New-CustomConnector {
+    Param (
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the custom connector config files")]
+        [string] $connectorPath
+    )
 
-Param (
-    [Parameter(Mandatory=$true, HelpMessage="The name of the custom connector")]
-    [string]$connectorName,
-    [Parameter(Mandatory=$false, HelpMessage="The path to the custom connector icon")]
-    [string]$iconPath = "./icon.png",
-    [Parameter(Mandatory=$false, HelpMessage="The path to a directory that will store the generated assets")]
-    [string]$outputPath = "./output",
-    [Parameter(Mandatory=$false, HelpMessage="The path to the OpenAPI definition file")]
-    [string]$apiDefinitionPath = "./apiDefinition.json",
-    [Parameter(Mandatory=$false, HelpMessage="The path to the configuration file")]
-    [string]$configPath = "./config.json"
-)
+    try {
+        pac connector create --settings-file "$connectorPath/settings.json"
+    }
+    catch {
+        Write-Error "An error occurred while creating the custom connector: $($_.Exception.Message)"
+        Exit 1
+    }
+}
+
+function New-CustomConnectorConfig {
+    Param (
+        [Parameter(Mandatory = $true, HelpMessage = "The name of the custom connector")]
+        [string] $connectorName,
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the OpenAPI definition file")]
+        [string]$apiDefinitionPath,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the custom connector icon")]
+        [string] $iconPath = "assets/icon.png",
+        [Parameter(Mandatory = $false, HelpMessage = "The path to a directory that will store the generated assets")]
+        [string] $outputPath = "output",
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the configuration file")]
+        [string] $configPath = "config.json"
+    )
+    try {
+        $connectorPath = "./$outputPath/$connectorName"
+        if (!(Test-Path $connectorPath)) {
+            New-Item -Name $connectorPath -ItemType Directory
+        }
+
+        pac connector init --outputDirectory $connectorPath --generate-settings-file
+    
+        # Copy the API definition to the output directory
+        Copy-Item $apiDefinitionPath "$connectorPath/apiDefinition.json"
+    
+        # Configure the authentication model of the API using the API definition
+        Configure-AuthenticationOptions -connectorPath $connectorPath
+    
+        if (Test-Path $iconPath) {
+            # Copy the icon to the output directory and update the settings file
+            Copy-Item $iconPath "$connectorPath/icon.png"
+            $settings = (Get-Content "$connectorPath/settings.json" -Raw | ConvertFrom-Json)
+            $settings.icon = "icon.png"
+            $settings | ConvertTo-Json -Depth 100 | Out-File "$connectorPath/settings.json" -Force
+            
+        }
+        else {
+            throw "Icon file not found at $iconPath"
+        }
+    }
+    catch {
+        Write-Error "An error occurred while configuring the custom connector files: $($_.Exception.Message)"
+        Exit 1
+    }
+}
 
 function Get-ApiKeyConnectionParameters {
     return @{
         "api_key" = @{
-            "type" = "securestring"
+            "type"         = "securestring"
             "uiDefinition" = @{
                 "displayName" = "API Key"
                 "description" = "The API Key to authenticate with the API"
-                "tooltip" = "Provide your API Key"
+                "tooltip"     = "Provide your API Key"
                 "constraints" = @{
-                    "tabIndex" = 2
+                    "tabIndex"  = 2
                     "clearText" = $false
-                    "required" = "true"
+                    "required"  = "true"
                 }
             }
         }
     }
 }
+
 function Get-BasicAuthConnectionParameters {
     return @{
         "username" = @{
-            "type" = "securestring"
+            "type"         = "securestring"
             "uiDefinition" = @{
                 "displayName" = "Username"
                 "description" = "The username to authenticate with the API"
-                "tooltip" = "Provide your API username"
+                "tooltip"     = "Provide your API username"
                 "constraints" = @{
-                    "tabIndex" = 2
+                    "tabIndex"  = 2
                     "clearText" = $true
-                    "required" = "true"
+                    "required"  = "true"
                 }
             }
         }
         "password" = @{
-            "type" = "securestring"
+            "type"         = "securestring"
             "uiDefinition" = @{
                 "displayName" = "Password"
                 "description" = "The password to authenticate with the API"
-                "tooltip" = "Provide your API password"
+                "tooltip"     = "Provide your API password"
                 "constraints" = @{
-                    "tabIndex" = 3
+                    "tabIndex"  = 3
                     "clearText" = $false
-                    "required" = "true"
+                    "required"  = "true"
                 }
             }
         }
@@ -75,27 +118,27 @@ function Get-AadAccessCodeConnectionParameters {
         [string] $tenantId
     )
     return @{
-        "token" = @{
-            "type" = "oauthSetting"
+        "token"          = @{
+            "type"          = "oauthSetting"
             "oAuthSettings" = @{
                 "identityProvider" = "aad"
-                "clientId" = $clientId
-                "scopes" = $scopes
-                "redirectMode" = "Global"
-                "redirectUrl" = "https://global.consent.azure-apim.net/redirect"
-                "properties" = @{
-                    "IsFirstParty" = "False"
-                    "IsOnbehalfofLoginSupported" = $true
+                "clientId"         = $clientId
+                "scopes"           = $scopes
+                "redirectMode"     = "Global"
+                "redirectUrl"      = "https://global.consent.azure-apim.net/redirect"
+                "properties"       = @{
+                    "IsFirstParty"                   = "False"
+                    "IsOnbehalfofLoginSupported"     = $true
                     "AzureActiveDirectoryResourceId" = $resourceUri
                 }
                 "customParameters" = @{
-                    "loginUrl" = @{
+                    "loginUrl"              = @{
                         "value" = "https://login.microsoftonline.com"
                     }
-                    "tenantId" = @{
+                    "tenantId"              = @{
                         "value" = $tenantId
                     }
-                    "resourceUri" = @{
+                    "resourceUri"           = @{
                         "value" = $resourceUri
                     }
                     "enableOnbehalfOfLogin" = @{
@@ -105,14 +148,14 @@ function Get-AadAccessCodeConnectionParameters {
             }
         }
         "token:TenantId" = @{
-            "type" = "string"
-            "metadata" = @{
+            "type"         = "string"
+            "metadata"     = @{
                 "sourceType" = "AzureActiveDirectoryTenant"
             }
             "uiDefinition" = @{
                 "constraints" = @{
                     "required" = "false"
-                    "hidden" = "true"
+                    "hidden"   = "true"
                 }
             }
         }
@@ -130,25 +173,25 @@ function Get-GenericOAuthAccessCodeConnectionParameters {
 
     return @{
         "token" = @{
-            "type" = "oauthSetting"
+            "type"          = "oauthSetting"
             "oAuthSettings" = @{
                 "identityProvider" = "oauth2"
-                "clientId" = $clientId
-                "scopes" = $scopes
-                "redirectMode" = "Global"
-                "redirectUrl" = "https://global.consent.azure-apim.net/redirect"
-                "properties" = @{
-                    "IsFirstParty" = "False"
+                "clientId"         = $clientId
+                "scopes"           = $scopes
+                "redirectMode"     = "Global"
+                "redirectUrl"      = "https://global.consent.azure-apim.net/redirect"
+                "properties"       = @{
+                    "IsFirstParty"               = "False"
                     "IsOnbehalfofLoginSupported" = $false
                 }
                 "customParameters" = @{
                     "authorizationUrl" = @{
                         "value" = $authorizationUrl
                     }
-                    "tokenUrl" = @{
+                    "tokenUrl"         = @{
                         "value" = $tokenUrl
                     }
-                    "refreshUrl" = @{
+                    "refreshUrl"       = @{
                         "value" = $refreshUrl
                     }
                 }
@@ -159,12 +202,12 @@ function Get-GenericOAuthAccessCodeConnectionParameters {
 
 function Get-GenericOAuthClientCredentialsConnectionParameters {
     return @{
-        "clientId" = @{
-            "type" = "string"
+        "clientId"     = @{
+            "type"         = "string"
             "uiDefinition" = @{
                 "displayName" = "Client ID"
                 "description" = "The Client ID of the API application."
-                "tooltip" = "Provide your Client ID."
+                "tooltip"     = "Provide your Client ID."
                 "constraints" = @{
                     "tabIndex" = 2
                     "required" = "true"
@@ -172,15 +215,15 @@ function Get-GenericOAuthClientCredentialsConnectionParameters {
             }
         }
         "clientSecret" = @{
-            "type" = "securestring"
+            "type"         = "securestring"
             "uiDefinition" = @{
                 "displayName" = "Client Secret"
                 "description" = "The Client Secret of the API application."
-                "tooltip" = "Provide your Client Secret."
+                "tooltip"     = "Provide your Client Secret."
                 "constraints" = @{
-                    "tabIndex" = 3
+                    "tabIndex"  = 3
                     "clearText" = $false
-                    "required" = "true"
+                    "required"  = "true"
                 }
             }
         }
@@ -195,32 +238,32 @@ function Get-GenericOAuthClientCredentialsPolicyTemplates {
     $policyTemplateInstances = @(
         @{
             "TemplateId" = "setheader"
-            "Title" = "Set HTTP header - Token URL"
+            "Title"      = "Set HTTP header - Token URL"
             "Parameters" = @{
-                "x-ms-apimTemplateParameter.name" = "tokenUrl"
-                "x-ms-apimTemplateParameter.value" = $tokenUrl
+                "x-ms-apimTemplateParameter.name"         = "tokenUrl"
+                "x-ms-apimTemplateParameter.value"        = $tokenUrl
                 "x-ms-apimTemplateParameter.existsAction" = "override"
-                "x-ms-apimTemplate-policySection" = "Request"
+                "x-ms-apimTemplate-policySection"         = "Request"
             }
         },
         @{
             "TemplateId" = "setheader"
-            "Title" = "Set HTTP header - Client ID"
+            "Title"      = "Set HTTP header - Client ID"
             "Parameters" = @{
-                "x-ms-apimTemplateParameter.name" = "clientId"
-                "x-ms-apimTemplateParameter.value" = "@connectionParameters('clientId','')"
+                "x-ms-apimTemplateParameter.name"         = "clientId"
+                "x-ms-apimTemplateParameter.value"        = "@connectionParameters('clientId','')"
                 "x-ms-apimTemplateParameter.existsAction" = "override"
-                "x-ms-apimTemplate-policySection" = "Request"
+                "x-ms-apimTemplate-policySection"         = "Request"
             }
         },
         @{
             "TemplateId" = "setheader"
-            "Title" = "Set HTTP header - Client Secret"
+            "Title"      = "Set HTTP header - Client Secret"
             "Parameters" = @{
-                "x-ms-apimTemplateParameter.name" = "clientSecret"
-                "x-ms-apimTemplateParameter.value" = "@connectionParameters('clientSecret','')"
+                "x-ms-apimTemplateParameter.name"         = "clientSecret"
+                "x-ms-apimTemplateParameter.value"        = "@connectionParameters('clientSecret','')"
                 "x-ms-apimTemplateParameter.existsAction" = "override"
-                "x-ms-apimTemplate-policySection" = "Request"
+                "x-ms-apimTemplate-policySection"         = "Request"
             }
         }
     )
@@ -228,16 +271,17 @@ function Get-GenericOAuthClientCredentialsPolicyTemplates {
     if ($scopes) {
         $policyTemplateInstances += @{
             "TemplateId" = "setheader"
-            "Title" = "Set HTTP header - Scope"
+            "Title"      = "Set HTTP header - Scope"
             "Parameters" = @{
-                "x-ms-apimTemplateParameter.name" = "scope"
-                "x-ms-apimTemplateParameter.value" = ($scopes -join " ")
+                "x-ms-apimTemplateParameter.name"         = "scope"
+                "x-ms-apimTemplateParameter.value"        = ($scopes -join " ")
                 "x-ms-apimTemplateParameter.existsAction" = "override"
-                "x-ms-apimTemplate-policySection" = "Request"
+                "x-ms-apimTemplate-policySection"         = "Request"
             }
         }
     }
 }
+
 function Configure-AuthenticationOptions {
     Param(
         [string] $connectorPath
@@ -267,7 +311,7 @@ function Configure-AuthenticationOptions {
             $scopes = @()
 
             # Get the scopes from the API definition if they exist
-            if(Get-Member -inputobject $apiDefintionAuth -name "scopes" -Membertype Properties) {
+            if (Get-Member -inputobject $apiDefintionAuth -name "scopes" -Membertype Properties) {
                 $scopes = @($apiDefintionAuth.scopes.PSObject.Properties.Name)
             }
 
@@ -279,23 +323,25 @@ function Configure-AuthenticationOptions {
                 # Currently, only access code flow is supported in this script for AAD
                 $isAad = (($apiDefintionAuth.authorizationUrl -like "*login.microsoftonline.com*") -or ($apiDefintionAuth.tokenUrl -like "*login.microsoftonline.com*"))
 
-                if($isAad){
+                if ($isAad) {
                     Write-Output "AAD OAuth2.0 access code authentication model found and configured"
                     $connectionParameters = Get-AadAccessCodeConnectionParameters -clientId $oauthConfig.clientId -scopes $scopes -resourceUri $oauthConfig.resourceUri -tenantId $oauthConfig.tenantId
 
-                } else {
+                }
+                else {
                     Write-Output "OAuth2.0 access code authentication model found and configured"
                     $connectionParameters = Get-GenericOAuthAccessCodeConnectionParameters -clientId $oauthConfig.clientId -scopes $scopes -authorizationUrl $apiDefintionAuth.authorizationUrl -tokenUrl $apiDefintionAuth.tokenUrl -refreshUrl $apiDefintionAuth.refreshUrl
                 }
 
-            # Swagger 2.0 specification calls the client credentials flow "application" flow
-            } elseif ($apiDefintionAuth.flow -eq "application") {
+                # Swagger 2.0 specification calls the client credentials flow "application" flow
+            }
+            elseif ($apiDefintionAuth.flow -eq "application") {
                 Write-Output "OAuth2.0 client credentials authentication model found and configured"
                 $connectionParameters = Get-GenericOAuthClientCredentialsConnectionParameters
 
                 $policyTemplateInstances = Get-GenericOAuthClientCredentialsPolicyTemplates -tokenUrl $apiDefintionAuth.tokenUrl -scopes $scopes
 
-                $customCodePath = "./clientCredentialsAuthFlow.csx"
+                $customCodePath = "./assets/clientCredentialsAuthFlow.csx"
             }
         }
         Default {
@@ -307,7 +353,7 @@ function Configure-AuthenticationOptions {
     $apiProperties = Get-Content $apiPropertiesPath -Raw | ConvertFrom-Json
 
     # Add the authentication connection parameters to the API Properties
-    if($connectionParameters) {
+    if ($connectionParameters) {
         $apiProperties.properties.connectionParameters = $connectionParameters
     }
 
@@ -331,34 +377,5 @@ function Configure-AuthenticationOptions {
     }
 }
 
-try {
-    Write-Output "Create the output directory to store the connector files"
-    $connectorPath = "./$outputPath/$connectorName"
-    mkdir $connectorPath
-
-    Write-Output "Generate the connector configuration files"
-    pac connector init --outputDirectory $connectorPath --generate-settings-file
-
-    # Copy the API definition to the output directory
-    Copy-Item $apiDefinitionPath "$connectorPath/apiDefinition.json"
-
-    # Get the authentication model of the API using the API definition
-    Write-Output "Configuring the connector assets with the authentication model of the API"
-    Configure-AuthenticationOptions -connectorPath $connectorPath
-
-    if (Test-Path $iconPath){
-        # Copy the icon to the output directory and update the settings file
-        $settings = (Get-Content "$connectorPath/settings.json" -Raw | ConvertFrom-Json)
-        $settings.icon = $iconPath
-        $settings | ConvertTo-Json -Depth 100 | Out-File "$connectorPath/settings.json" -Force
-        Copy-Item $iconPath "$connectorPath/icon.png"
-    } else {
-        throw "Icon file not found at $iconPath"
-    }
-}
-catch {
-    Write-Error "An error occurred while configuring the custom connector files: $($_.Exception.Message)"
-    Exit 1
-}
-
-Write-Output "Custom connector files generated successfully and stored in $connectorPath"
+Export-ModuleMember -Function New-CustomConnectorConfig
+Export-ModuleMember -Function New-CustomConnector
