@@ -14,6 +14,8 @@ The **MsIndustryLinks** module contains cmdlets to generate workflow templates (
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | [New-AppSourceOffer](appsource/New-AppSourceOffer.md)                      | Create an AppSource offer in Partner Center                        |
 | [New-AppSourcePackage](appsource/New-AppSourcePackage.md)                  | Create an AppSource package from managed solution                  |
+| [New-CustomConnector](customConnector/New-CustomConnector.md)              | Create a custom connector in a Power Platform environment          |
+| [New-CustomConnectorConfig](customConnector/New-CustomConnectorConfig.md)  | Creates Power Platform custom connector asset configuration files  |
 | [New-DataSourceWorkflow](templates/data_source/New-DataSourceWorkflow.md)  | Generate an end-to-end workflow template for specified data source |
 | [New-IngestionWorkflow](templates/ingest/New-IngestionWorkflow.md)         | Generate an ingestion workflow template                            |
 | [New-MsIndustryLink](templates/New-MsIndustryLink.md)                      | Generate a Microsoft Industry Link                                 |
