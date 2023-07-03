@@ -34,41 +34,36 @@ function New-CustomConnector {
 
 function New-CustomConnectorConfig {
     Param (
-        [Parameter(Mandatory = $true, HelpMessage = "The name of the custom connector")]
-        [string] $connectorName,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the OpenAPI definition file")]
-        [string]$apiDefinitionPath,
-        [Parameter(Mandatory = $false, HelpMessage = "The path to the custom connector icon")]
-        [string] $iconPath = "assets/icon.png",
-        [Parameter(Mandatory = $false, HelpMessage = "The path to a directory that will store the generated assets")]
-        [string] $outputPath = "output",
-        [Parameter(Mandatory = $false, HelpMessage = "The path to the configuration file")]
-        [string] $configPath = "config.json"
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the configuration file")]
+        [string] $ConfigFile,
+        [Parameter(Mandatory = $true, HelpMessage = "The path to a directory that will store the generated assets")]
+        [string] $OutputDirectory
     )
     try {
-        $connectorPath = "./$outputPath/$connectorName"
-        if (!(Test-Path $connectorPath)) {
-            New-Item -Name $connectorPath -ItemType Directory
+        $config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+
+        if (!(Test-Path $OutputDirectory)) {
+            New-Item -Name $OutputDirectory -ItemType Directory
         }
 
-        pac connector init --outputDirectory $connectorPath --generate-settings-file
+        pac connector init --outputDirectory $OutputDirectory --generate-settings-file
     
         # Copy the API definition to the output directory
-        Copy-Item $apiDefinitionPath "$connectorPath/apiDefinition.json"
+        Copy-Item $config.apiDefinition "$OutputDirectory/apiDefinition.json"
     
         # Configure the authentication model of the API using the API definition
-        Configure-AuthenticationOptions -connectorPath $connectorPath
+        Configure-AuthenticationOptions -ConnectorAssetsPath $OutputDirectory -ConfigFile $ConfigFile
     
-        if (Test-Path $iconPath) {
+        $iconFile = $config.icon
+        if (Test-Path $iconFile) {
             # Copy the icon to the output directory and update the settings file
-            Copy-Item $iconPath "$connectorPath/icon.png"
-            $settings = (Get-Content "$connectorPath/settings.json" -Raw | ConvertFrom-Json)
+            Copy-Item $iconFile "$OutputDirectory/icon.png"
+            $settings = (Get-Content "$OutputDirectory/settings.json" -Raw | ConvertFrom-Json)
             $settings.icon = "icon.png"
-            $settings | ConvertTo-Json -Depth 100 | Out-File "$connectorPath/settings.json" -Force
-            
+            $settings | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/settings.json" -Force
         }
         else {
-            throw "Icon file not found at $iconPath"
+            throw "Icon file not found at $iconFile"
         }
     }
     catch {
@@ -300,11 +295,12 @@ function Get-GenericOAuthClientCredentialsPolicyTemplates {
 
 function Configure-AuthenticationOptions {
     Param(
-        [string] $connectorPath
+        [string] $ConnectorAssetsPath,
+        [string] $ConfigFile
     )
 
-    $apiDefinitionPath = "$connectorPath/apiDefinition.json"
-    $apiPropertiesPath = "$connectorPath/apiProperties.json"
+    $apiDefinitionPath = "$ConnectorAssetsPath/apiDefinition.json"
+    $apiPropertiesPath = "$ConnectorAssetsPath/apiProperties.json"
 
     $securityDefinition = (Get-Content $apiDefinitionPath -Raw | ConvertFrom-Json).securityDefinitions
     $connectionParameters = @{}
@@ -332,7 +328,7 @@ function Configure-AuthenticationOptions {
             }
 
             # Read the configuration file and get the OAuth2.0 values
-            $oauthConfig = (Get-Content $configPath -Raw | ConvertFrom-Json).oauth2
+            $oauthConfig = (Get-Content $ConfigFile -Raw | ConvertFrom-Json).oauth2
 
             # Check auth flow type
             if ($apiDefintionAuth.flow -eq "accessCode") {
@@ -385,11 +381,11 @@ function Configure-AuthenticationOptions {
     # Update the output settings.json to point to custom code if exists
     if ($customCodePath) {
         Write-Output "Adding custom code to the connector settings"
-        $settings = (Get-Content "$connectorPath/settings.json" -Raw | ConvertFrom-Json)
+        $settings = (Get-Content "$ConnectorAssetsPath/settings.json" -Raw | ConvertFrom-Json)
         $settings.script = "script.csx"
-        $settings | ConvertTo-Json -Depth 100 | Out-File "$connectorPath/settings.json" -Force
+        $settings | ConvertTo-Json -Depth 100 | Out-File "$ConnectorAssetsPath/settings.json" -Force
 
-        Copy-Item $customCodePath "$connectorPath/script.csx"
+        Copy-Item $customCodePath "$ConnectorAssetsPath/script.csx"
     }
 }
 
