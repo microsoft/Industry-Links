@@ -32,11 +32,32 @@ function New-CustomConnector {
     }
 }
 
+<#
+    .Synopsis
+    Generates the asset configuration files to create a Power Platform custom connector.
+
+    .Description
+    Generates the asset files required to create a Power Platform custom connector,
+    which include the API definition file, API properties file, settings.json file,
+    the icon and the custom script file (if required).
+
+    .Parameter ConfigFile
+    The configuration file that defines the location of the required files to create
+    the custom connector and the configuration for OAuth 2.0 authentication.
+
+    .Parameter OutputDirectory
+    The directory where the generated custom connector assets will be saved.
+    If it doesn't exist, it will be created.
+
+    .Example
+    # Generate the assets for a Power Platform custom connector
+    New-CustomConnectorConfig -ConfigFile config.json -OutputDirectory output
+#>
 function New-CustomConnectorConfig {
     Param (
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the configuration file")]
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the configuration file.")]
         [string] $ConfigFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to a directory that will store the generated assets")]
+        [Parameter(Mandatory = $true, HelpMessage = "The path to a directory that will store the generated assets.")]
         [string] $OutputDirectory
     )
     try {
