@@ -41,9 +41,7 @@ New-DataSourceWorkflow
 
 ### -WorkflowConfigFile
 
-The workflow configuration file that defines the trigger, the data source, the data sink and any transformations that will be applied.
-
-See [workflow.json.tmpl](../workflow.json.tmpl) for an example.
+The workflow configuration file that defines the trigger, the data source, the data sink and any transformations that will be applied. See [flow_workflow.json.tmpl](../flow_workflow.json.tmpl) and [logicapp_workflow.json.tmpl](../logicapp_workflow.json.tmpl) for examples of the workflow configuration file.
 
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |

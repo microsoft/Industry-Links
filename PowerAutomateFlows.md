@@ -16,13 +16,17 @@ cd scripts/modules
 Import-Module -Name MsIndustryLinks
 ```
 
-## Identify your data source and configure parameters file
+## Identify your data source and configure workflow
 
-### Configure data source
+### Configure data source, transform and sink
 
-Create a workflow configuration file for the data source workflow with the required parameters for your use case. See [workflow.json.tmpl](scripts/modules/MsIndustryLinks/templates/workflow.json.tmpl) for an example.
+Create a configuration file for the workflow with the required parameters for your use case. See [flow_workflow.json.tmpl](flow_workflow.json.tmpl) and [logicapp_workflow.json.tmpl](logicapp_workflow.json.tmpl) for examples of the workflow configuration file.
 
-The supported workflow data sources include: Azure Blob Storage and Custom Connectors.
+|                 |                                      |
+| --------------- | ------------------------------------ |
+| Data sources    | Azure Blob Storage, Custom Connector |
+| Data transforms | CSV to JSON                          |
+| Data sinks      | Dataverse                            |
 
 The custom connector data source supports both certified and non-certified connectors.
 
@@ -30,12 +34,6 @@ A certifed custom connector allows for the connector to be publicly available fo
 
 A non-certified custom connector is only able to be shared with users in your organization. This is an option for testing your Industry Link while your custom connector is being certified.
 To create an Industry Link with a non-certified connector, an Azure AD application is required to obtain the required configuration details of your custom connector via the Dataverse Web API. This will be configured in an [authentication config file](scripts/modules/MsIndustryLinks/templates/auth.json.tmpl). See the [Microsoft Dataverse documentation](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/build-web-applications-server-server-s2s-authentication) to associate an Azure AD application with your Dataverse environment.
-
-### Configure data sink
-
-Create a parameters file for the Dataverse ingestion workflow with the required parameters for your use case. See [dataverse.parameters.json.tmpl](scripts/modules/MsIndustryLinks/templates/ingest/dataverse.parameters.json.tmpl) for an example.
-
-Create a mapping definition file with the required parameters for your use case. See [flow_mapping.json.tmpl](scripts/modules/MsIndustryLinks/templates/ingest/flow_mapping.json.tmpl) or [logicapp_mapping.json.tmpl](scripts/modules/MsIndustryLinks/templates/ingest/logicapp_mapping.json.tmpl) for examples.
 
 ## Generate workflow templates and deployable solution
 
@@ -49,34 +47,24 @@ Please refer to the [Create a solution publisher](https://learn.microsoft.com/en
 
 ### Generate Industry Link
 
-### Example 1: Generate an Industry Link package with a certified custom connector as the data source
+#### Example 1: Generate an Industry Link package with a certified custom connector as the data source
 
 ```powershell
 New-MsIndustryLink
-    -DataSource CustomConnector
     -BaseTemplate Flow
     -WorkflowConfigFile workflow.json
-    -DataverseParametersFile dataverse.parameters.json
     -OutputDirectory output
-    -MappingDefinitionFile mapping.json
     -PackageParametersFile package.parameters.json
-    -UseUpsert $false
-    -TriggerType Scheduled
 ```
 
-### Example 2: Generate an Industry Link package with Azure Blob Storage as the data source
+#### Example 2: Generate an Industry Link package with Azure Blob Storage as the data source
 
 ```powershell
 New-MsIndustryLink
-    -DataSource AzureBlobStorage
     -BaseTemplate Flow
     -WorkflowConfigFile workflow.json
-    -DataverseParametersFile dataverse.parameters.json
     -OutputDirectory output
-    -MappingDefinitionFile mapping.json
     -PackageParametersFile package.parameters.json
-    -UseUpsert $false
-    -TriggerType Scheduled
 ```
 
 The output directory will contain the Power Platform solution containing the Industry Link workflows that pass data from the source to the sink (Dataverse). A solution zip file is also in the output directory ready to be imported into your Dataverse environment and published to AppSource.
