@@ -94,7 +94,7 @@ function New-MsIndustryLink {
 
     if ($DataSource.ToLower() -eq "azureblobstorage") {
         # Create transformation workflow template
-        $transformMetadata = New-TransformWorkflow -BaseTemplate $BaseTemplate -SourceFormat CSV -OutputDirectory $OutputDirectory
+        $transformMetadata = New-TransformWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory
         $workflowGuids[$transformMetadata.name] = $transformMetadata.guid
     }
 

@@ -8,56 +8,34 @@ Generates a transform workflow template. Supports Logic Apps and Power Automate 
 
 ```powershell
 New-TransformWorkflow
-    -BaseTemplate <String>
-    -SourceFormat <String>
+    -WorkflowConfigFile <String>
     -OutputDirectory <String>
 ```
 
 ## Description
 
-Generates a transform workflow template that will transform content into a JSON array of objects. This cmdlet will generate a Logic App or Power Automate Flow template.
+Generates a transform workflow template that will transform content into a JSON array of objects. This cmdlet will generate a Logic App or Power Automate Flow template. Specify the workflow type (Flow or LogicApp) in the workflow configuration file.
 
 ## Examples
 
-### Example 1: Generate a Power Automate workflow template to transform data
+### Example 1: Generate a workflow template to transform data
 
 ```powershell
 New-TransformWorkflow
-    -BaseTemplate Flow
-    -SourceFormat CSV
-    -OutputDirectory output
-```
-
-### Example 2: Generate a Logic App workflow template to transform data
-
-```powershell
-New-TransformWorkflow
-    -BaseTemplate LogicApp
-    -SourceFormat CSV
+    -WorkflowConfigFile workflow.json
     -OutputDirectory output
 ```
 
 ## Parameters
 
-### -BaseTemplate
+### -WorkflowConfigFile
 
-The base template to use for generating the customized workflow.
+The workflow configuration file that defines the trigger, the data source, the data sink and any transformations that will be applied.
 
-|                  |                                                                                                                       |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Type:            | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
-| Accepted values: | Flow, LogicApp                                                                                                        |
-| Default value:   | None                                                                                                                  |
-
-### -SourceFormat
-
-The file format of the source content.
-
-|                  |                                                                                                                       |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Type:            | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
-| Accepted values: | CSV                                                                                                                   |
-| Default value:   | None                                                                                                                  |
+|                |                                                                                                                       |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Type:          | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
+| Default value: | None                                                                                                                  |
 
 ### -OutputDirectory
 
