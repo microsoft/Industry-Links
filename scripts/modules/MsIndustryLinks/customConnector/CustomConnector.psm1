@@ -1,14 +1,30 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
+<#
+    .Synopsis
+    Creates a Power Platform custom connector.
+
+    .Description
+    Creates Power Platform custom connector in the environment of your currently
+    active PAC CLI auth profile.
+
+    .Parameter CustomConnectorAssets
+    The path to the folder containing assets for the custom connector such as
+    the icon, API definition file, API properties file and the settings.json file.
+
+    .Example
+    # Create a custom connector
+    New-CustomConnector -CustomConnectorAssets output/ContosoCustomConnector
+#>
 function New-CustomConnector {
     Param (
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the custom connector config files")]
-        [string] $connectorPath
+        [Parameter(Mandatory = $true, HelpMessage = "The path containing the custom connector assets")]
+        [string] $CustomConnectorAssets
     )
 
     try {
-        pac connector create --settings-file "$connectorPath/settings.json"
+        pac connector create --settings-file "$CustomConnectorAssets/settings.json"
     }
     catch {
         Write-Error "An error occurred while creating the custom connector: $($_.Exception.Message)"
