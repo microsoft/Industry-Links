@@ -8,10 +8,9 @@ Generates a deployable package that contains a set of workflows that retrieves d
 
 ```powershell
 New-MsIndustryLink
-    -BaseTemplate <String>
     -WorkflowConfigFile <String>
-    -OutputDirectory <String>
     -PackageParametersFile <String>
+    -OutputDirectory <String>
     [-AuthConfigFile] <String>
 ```
 
@@ -25,33 +24,21 @@ Generates a set of workflow templates that will insert or upsert data into a Dat
 
 ```powershell
 New-MsIndustryLink
-    -BaseTemplate Flow
     -WorkflowConfigFile workflow.json
-    -OutputDirectory output
     -PackageParametersFile package.parameters.json
+    -OutputDirectory output
 ```
 
 ### Example 2: Generate an Industry Link package with Azure Blob Storage as the data source
 
 ```powershell
 New-MsIndustryLink
-    -BaseTemplate Flow
     -WorkflowConfigFile workflow.json
-    -OutputDirectory output
     -PackageParametersFile package.parameters.json
+    -OutputDirectory output
 ```
 
 ## Parameters
-
-### -BaseTemplate
-
-The base template to use for generating the customized workflow.
-
-|                  |                                                                                                                       |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Type:            | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
-| Accepted values: | Flow, LogicApp                                                                                                        |
-| Default value:   | None                                                                                                                  |
 
 ### -WorkflowConfigFile
 
@@ -62,18 +49,18 @@ The workflow configuration file that defines the trigger, the data source, the d
 | Type:          | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
 | Default value: | None                                                                                                                  |
 
-### -OutputDirectory
+### -PackageParametersFile
 
-The directory where the generated deployable package will be saved. If it doesn't exist, it will be created.
+The path to the parameters file (JSON) that will be used to customize the solution.
 
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Type:          | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
 | Default value: | None                                                                                                                  |
 
-### -PackageParametersFile
+### -OutputDirectory
 
-The path to the parameters file (JSON) that will be used to customize the solution.
+The directory where the generated deployable package will be saved. If it doesn't exist, it will be created.
 
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
