@@ -43,10 +43,10 @@ function New-CustomConnectorConfig {
         $config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
 
         if (!(Test-Path $OutputDirectory)) {
-            New-Item -Name $OutputDirectory -ItemType Directory
+            New-Item -Name $OutputDirectory -ItemType Directory | Out-Null
         }
 
-        pac connector init --outputDirectory $OutputDirectory --generate-settings-file
+        pac connector init --outputDirectory $OutputDirectory --generate-settings-file | Out-Null
     
         # Copy the API definition to the output directory
         Copy-Item $config.apiDefinition "$OutputDirectory/apiDefinition.json"
@@ -310,11 +310,9 @@ function Configure-AuthenticationOptions {
     # Set the connection parameters based on the authentication model of the API
     switch ($securityDefinition.PSObject.Properties.Value.type) {
         "apiKey" {
-            Write-Output "API key authentication model found and configured"
             $connectionParameters = Get-ApiKeyConnectionParameters
         }
         "basic" {
-            Write-Output "Basic authentication model found and configured"
             $connectionParameters = Get-BasicAuthConnectionParameters
         }
         "oauth2" {
@@ -336,19 +334,16 @@ function Configure-AuthenticationOptions {
                 $isAad = (($apiDefintionAuth.authorizationUrl -like "*login.microsoftonline.com*") -or ($apiDefintionAuth.tokenUrl -like "*login.microsoftonline.com*"))
 
                 if ($isAad) {
-                    Write-Output "AAD OAuth2.0 access code authentication model found and configured"
                     $connectionParameters = Get-AadAccessCodeConnectionParameters -clientId $oauthConfig.clientId -scopes $scopes -resourceUri $oauthConfig.resourceUri -tenantId $oauthConfig.tenantId
 
                 }
                 else {
-                    Write-Output "OAuth2.0 access code authentication model found and configured"
                     $connectionParameters = Get-GenericOAuthAccessCodeConnectionParameters -clientId $oauthConfig.clientId -scopes $scopes -authorizationUrl $apiDefintionAuth.authorizationUrl -tokenUrl $apiDefintionAuth.tokenUrl -refreshUrl $apiDefintionAuth.refreshUrl
                 }
 
                 # Swagger 2.0 specification calls the client credentials flow "application" flow
             }
             elseif ($apiDefintionAuth.flow -eq "application") {
-                Write-Output "OAuth2.0 client credentials authentication model found and configured"
                 $connectionParameters = Get-GenericOAuthClientCredentialsConnectionParameters
 
                 $policyTemplateInstances = Get-GenericOAuthClientCredentialsPolicyTemplates -tokenUrl $apiDefintionAuth.tokenUrl -scopes $scopes
@@ -375,12 +370,10 @@ function Configure-AuthenticationOptions {
     }
 
     # Output the new API properties configuration to the output directory
-    Write-Output "Output new API properties configuration to the output directory"
     $apiProperties | ConvertTo-Json -Depth 100 | Out-File $apiPropertiesPath -Force
 
     # Update the output settings.json to point to custom code if exists
     if ($customCodePath) {
-        Write-Output "Adding custom code to the connector settings"
         $settings = (Get-Content "$ConnectorAssetsPath/settings.json" -Raw | ConvertFrom-Json)
         $settings.script = "script.csx"
         $settings | ConvertTo-Json -Depth 100 | Out-File "$ConnectorAssetsPath/settings.json" -Force
