@@ -51,10 +51,7 @@
               "$filter": "",
               "$top": 1
             },
-            "authentication": {
-              "type": "Raw",
-              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
-            }
+            "authentication": "@parameters('$authentication')"
           }
         },
         "Insert_or_update_record": {
@@ -69,10 +66,7 @@
                   "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
                 },
                 "parameters": {},
-                "authentication": {
-                  "type": "Raw",
-                  "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
-                }
+                "authentication": "@parameters('$authentication')"
               }
             }
           },
@@ -91,10 +85,7 @@
                     "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
                   },
                   "parameters": {},
-                  "authentication": {
-                    "type": "Raw",
-                    "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
-                  }
+                  "authentication": "@parameters('$authentication')"
                 }
               }
             }

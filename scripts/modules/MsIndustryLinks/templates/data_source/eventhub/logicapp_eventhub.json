@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    },
+    "event_hub_name": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "event_hub_parameters": {
+      "defaultValue": {
+        "consumerGroupName": "$Default",
+        "contentType": "application/json",
+        "maximumEventsCount": 50
+      },
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "When_events_are_available_in_Event_Hub": {
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['eventhubs']['connectionId']"
+          }
+        },
+        "method": "get",
+        "path": "/@{encodeURIComponent(parameters('event_hub_name'))}/events/batch/head",
+        "queries": {
+          "consumerGroupName": "@parameters('event_hub_parameters')['consumerGroupName']",
+          "contentType": "@parameters('event_hub_parameters')['contentType']",
+          "maximumEventsCount": "@parameters('event_hub_parameters')['maximumEventsCount']"
+        }
+      },
+      "recurrence": {
+        "frequency": "Minute",
+        "interval": 1
+      },
+      "splitOn": "@triggerBody()",
+      "type": "ApiConnection"
+    }
+  },
+  "actions": {
+    "Ingest_data_subflow": {
+      "runAfter": {},
+      "type": "Workflow",
+      "inputs": {
+        "host": {
+          "triggerName": "manual",
+          "workflow": {
+            "id": "[resourceId('Microsoft.Logic/workflows', 'ingestData')]"
+          }
+        },
+        "body": {
+          "payload": "@triggerBody()?['ContentData']"
+        }
+      }
+    }
+  }
+}

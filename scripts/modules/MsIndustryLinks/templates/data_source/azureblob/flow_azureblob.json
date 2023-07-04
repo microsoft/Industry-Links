@@ -52,7 +52,7 @@
         "authentication": "@parameters('$authentication')"
       }
     },
-    "Transform_CSV_data_to_JSON": {
+    "Transform_data_subflow": {
       "runAfter": {
         "Get_modified_file_content_using_path": ["Succeeded"]
       },
@@ -66,9 +66,9 @@
         }
       }
     },
-    "Ingest_Data_Subflow": {
+    "Ingest_data_subflow": {
       "runAfter": {
-        "Transform_CSV_data_to_JSON": ["Succeeded"]
+        "Transform_data_subflow": ["Succeeded"]
       },
       "type": "Workflow",
       "inputs": {
@@ -76,7 +76,7 @@
           "workflowReferenceName": ""
         },
         "body": {
-          "payload": "@body('Transform_CSV_data_to_JSON')?['response']"
+          "payload": "@body('Transform_data_subflow')?['response']"
         }
       }
     }
