@@ -78,7 +78,10 @@ function New-IngestionWorkflow {
     }
     $template | ConvertTo-Json -Depth 20 | Out-File "$OutputDirectory/$templateName.json"
 
-    return $templateGuid
+    return @{
+        name = $templateName
+        guid = $templateGuid
+    }
 }
 
 function New-LogicAppIngestionWorkflow {

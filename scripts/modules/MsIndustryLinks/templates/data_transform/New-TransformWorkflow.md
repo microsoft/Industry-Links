@@ -76,6 +76,11 @@ This cmdlet accepts no input.
 
 ## Outputs
 
-**[Guid](https://learn.microsoft.com/en-us/dotnet/api/system.guid)**
+**[Hashtable](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#433-hashtables)**
 
-This cmdlet returns a GUID.
+This cmdlet returns a Hashtable containing the name and GUID of the workflow.
+
+|      |                          |
+| ---- | ------------------------ |
+| name | The name of the workflow |
+| guid | The GUID of the workflow |
