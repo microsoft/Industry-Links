@@ -11,47 +11,32 @@
     of workflow templates. It is then packaged into a solution deployable zip
     file.
 
-    .Parameter BaseTemplate
-    The base template to use for generating the customized workflow.
-    Options: LogicApp, Flow.
-
-    .Parameter WorkflowAssetsPath
-    The path to the workflow templates required for your Industry Link. This
-    should contain at least one workflow template.
-
     .Parameter ParametersFile
     The path to the parameters file (JSON) that will be used to customize the
     solution.
 
+    .Parameter TemplateDirectory
+    The path to the workflow templates required for your Industry Link. This
+    should contain at least one workflow template.
+
     .Parameter OutputDirectory
-    The directory where the solution assets will be saved.
+    The directory where the solution assets and package will be saved.
 
     .Example
     # Package a directory of workflow templates into a Power Platform solution deployable zip file.
-    New-WorkflowPackage -BaseTemplate "Flow" -WorkflowAssetsPath output -OutputDirectory output/solution -ParametersFile parameters.json
+    New-WorkflowPackage -ParametersFile parameters.json -TemplateDirectory output -OutputDirectory output/solution
 #>
 function New-WorkflowPackage {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The base template to use for the workflow. Options: LogicApp, Flow.")]
-        [string] $BaseTemplate,
-        [Parameter(Mandatory = $true, HelpMessage = "The path of the workflow assets to be packaged.")]
-        [string] $WorkflowAssetsPath,
-        [Parameter(Mandatory = $true, HelpMessage = "The directory path where the packaged solution will be saved.")]
-        [string] $OutputDirectory,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
-        [string] $ParametersFile
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters JSON file.")]
+        [string] $ParametersFile,
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the directory containing the workflow templates.")]
+        [string] $TemplateDirectory,
+        [Parameter(Mandatory = $true, HelpMessage = "The directory path where the solution package will be saved.")]
+        [string] $OutputDirectory
     )
 
-    $baseApp = $BaseTemplate.ToLower()
-    if ($baseApp -eq "logicapp") {
-        # Logic app functionality not yet implemented
-    }
-    elseif ($baseApp -eq "flow") {
-        New-WorkflowsIntoSolution -WorkflowAssetsPath $WorkflowAssetsPath -OutputDirectory $OutputDirectory -ParametersFile $ParametersFile
-    }
-    else {
-        throw "The base template specified is not supported. Please choose from: LogicApp, Flow."
-    }
+    New-WorkflowsIntoSolution -WorkflowAssetsPath $TemplateDirectory -OutputDirectory $OutputDirectory -ParametersFile $ParametersFile
 }
 
 function New-WorkflowsIntoSolution {

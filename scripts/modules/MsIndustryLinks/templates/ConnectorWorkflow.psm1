@@ -12,14 +12,6 @@
     Power Platform solution that can be imported into your Dataverse
     environment or used for publishing to AppSource.
 
-    .Parameter BaseTemplate
-    The base template to use for generating the customized workflow.
-    Options: Flow.
-
-    .Parameter OutputDirectory
-    The directory where the generated deployable package will be saved. If it
-    doesn't exist, it will be created.
-
     .Parameter WorkflowConfigFile
     The workflow configuration file that defines the trigger, the data
     source, the data sink and any transformations that will be applied.
@@ -27,6 +19,10 @@
     .Parameter PackageParametersFile
     The path to the parameters file (JSON) that will be used to customize the
     solution.
+
+    .Parameter OutputDirectory
+    The directory where the generated deployable package will be saved. If it
+    doesn't exist, it will be created.
 
     .Parameter AuthConfigFile
     The path to the authentication configuration JSON file. This file is only
@@ -36,34 +32,33 @@
 
     .Example
     # Generate an Industry Link package with a certified custom connector as the data source.
-    New-MsIndustryLink -DataSource CustomConnector -BaseTemplate "Flow" -WorkflowConfigFile workflow.json -OutputDirectory output -PackageParametersFile package.parameters.json
+    New-MsIndustryLink -DataSource CustomConnector -WorkflowConfigFile workflow.json -PackageParametersFile package.parameters.json -OutputDirectory output
 
     # Generate an Industry Link package with Azure Blob Storage as the data source.
-    New-MsIndustryLink -DataSource AzureBlobStorage -BaseTemplate "Flow" -WorkflowConfigFile workflow.json -OutputDirectory output -PackageParametersFile package.parameters.json
+    New-MsIndustryLink -DataSource AzureBlobStorage -WorkflowConfigFile workflow.json -PackageParametersFile package.parameters.json -OutputDirectory output
 #>
 function New-MsIndustryLink {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The base template to use for the workflow. Options: LogicApp, Flow.")]
-        [string] $BaseTemplate,
-        [Parameter(Mandatory = $true, HelpMessage = "The directory path where the Industry Link solution will be saved.")]
-        [string] $OutputDirectory,
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
         [Parameter(Mandatory = $true, HelpMessage = "The path to the package parameters file (JSON).")]
         [string] $PackageParametersFile,
+        [Parameter(Mandatory = $true, HelpMessage = "The directory path where the Industry Link solution will be saved.")]
+        [string] $OutputDirectory,
         [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
         [string] $AuthConfigFile
     )
 
     $workflowConfig = Get-Content $WorkflowConfigFile | ConvertFrom-Json
     $dataSourceType = $workflowConfig.dataSource.type.ToLower()
+    $workflowType = $workflowConfig.workflowType.ToLower()
     $workflowGuids = @{}
 
     # Create ingestion workflow template
     $ingestionMetadata = New-IngestionWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory
     $workflowGuids[$ingestionMetadata.name] = $ingestionMetadata.guid
 
-    if ($dataSourceType -eq "azureblobstorage") {
+    if ("azureblobstorage" -eq $dataSourceType) {
         # Create transformation workflow template
         $transformMetadata = New-TransformWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory
         $workflowGuids[$transformMetadata.name] = $transformMetadata.guid
@@ -72,8 +67,10 @@ function New-MsIndustryLink {
     # Create data source workflow template
     New-DataSourceWorkflow -WorkflowConfigFile $WorkflowConfigFile -TemplateDirectory $OutputDirectory -WorkflowGuids $workflowGuids -AuthConfigFile $AuthConfigFile
 
-    # Package Industry Link into a solution
-    New-WorkflowPackage -BaseTemplate $BaseTemplate -WorkflowAssetsPath $OutputDirectory -OutputDirectory $OutputDirectory -ParametersFile $PackageParametersFile
+    if ("flow" -eq $workflowType) {
+        # Package Industry Link into a solution
+        New-WorkflowPackage -ParametersFile $PackageParametersFile -TemplateDirectory $OutputDirectory -OutputDirectory $OutputDirectory
+    }
 }
 
 Export-ModuleMember -Function New-MsIndustryLink
