@@ -1,0 +1,98 @@
+// Use this template to generate a workflow.json file for
+// Logic App or Flow. Save a copy and keep only what is
+// required for your use case. Remove all comments.
+{
+  "workflowType": "Flow",
+
+  "trigger": {
+    "type": "Scheduled",
+    "parameters": {
+      "interval": "1",
+      "frequency": "{Second/Minute/Hour/Day/Week/Month}"
+    }
+  },
+
+  "dataSource": {
+    "type": "AzureBlobStorage",
+    "name": "GetDataFromAzureBlobStorage",
+
+    // Parameters required by the data source.
+    // For example, Azure Blob Storage requires the storage
+    // account (dataset) and container (folderId) to check
+    // for data files.
+    "parameters": {
+      "dataset": "mystorageaccount",
+      "folderId": "mycontainer",
+      "maxFileCount": 100
+    },
+
+    ///--- CUSTOM CONNECTORS ONLY ---///
+    "isCertified": false,
+    "connection": {
+      "connectorId": "", // required for non-certified custom connectors
+      "apiName": "",
+      "operationId": ""
+    }
+  },
+
+  // Optional
+  "dataTransform": {
+    "type": "csv_to_json",
+    "name": "TransformCSVToJSON"
+  },
+
+  "dataSink": {
+    "name": "IngestIntoDataverse",
+    "upsert": false,
+    "parameters": {
+      "$connections": {
+        "value": {
+          "commondataservice": {
+            "connectionId": "/subscriptions/{subscription}/resourceGroups/{resource-group}/providers/Microsoft.Web/connections/commondataservice",
+            "connectionName": "commondataservice",
+            "id": "/subscriptions/{subscription}/providers/Microsoft.Web/locations/{location}/managedApis/commondataservice"
+          }
+        }
+      },
+      "organization_url": {
+        "value": "https://org12345.crm.dynamics.com"
+      },
+      "plural_table_name": {
+        "value": "contoso_transactions"
+      },
+
+      ///--- UPSERT ONLY ---///
+
+      // Use one of primary key or alternate key. For more info, visit:
+      // https://learn.microsoft.com/en-us/power-apps/developer/data-platform/use-alternate-key-reference-record
+
+      // If using primary key, provide the source property used to match the record GUID.
+      // Example: /contoso_transactions(00000000-0000-0000-0000-000000000000)
+      "guid_property": {
+        "value": "transaction_id"
+      },
+
+      // If using alternate keys, provide the table column name, the source
+      // property used to match the column value, and the data type. This is
+      // used to generate the lookup.
+      // Example: /contoso_transactions(contoso_col1='col1value',contoso_col2=123456)
+      "alternate_keys": {
+        "value": [
+          { "column": "contoso_col1", "property": "col1", "type": "string" },
+          { "column": "contoso_col2", "property": "col2", "type": "number" }
+        ]
+      }
+    },
+    "mapping": {
+      // record's GUID, insert only. Leave out to autogenerate GUID.
+      "contoso_transactionid": "@item()['transaction_id']",
+
+      // all other columns to populate
+      "contoso_amount": "@item()['amount']",
+      "contoso_customerid": "@{item()['customer_id']}",
+      "contoso_merchantname": "@{item()['merchant_name']}",
+      "contoso_merchanttype": "@{item()['merchant_type']}",
+      "contoso_timestamp": "@{parseDateTime(item()['timestamp'])}"
+    }
+  }
+}

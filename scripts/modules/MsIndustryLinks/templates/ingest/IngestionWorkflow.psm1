@@ -9,67 +9,55 @@
     .Description
     Generates an ingestion workflow template that will insert or upsert data
     into a Dataverse table. This function will generate a Logic App or Power
-    Automate Flow template.
+    Automate Flow template. Specify the workflow type (Flow or LogicApp)
+    in the workflow configuration file.
 
-    .Parameter BaseTemplate
-    The base template to use for generating the customized workflow.
-    Options: LogicApp, Flow.
-
-    .Parameter ParametersFile
-    The path to the parameters file (JSON) that will be used to customize the
-    parameters in the template.
-
-    .Parameter MappingDefinitionFile
-    The path to the mapping definition file (JSON) that will be used to
-    customize the mapping between your source data and Dataverse table.
+    .Parameter WorkflowConfigFile
+    The workflow configuration file that defines the trigger, the data
+    source, the data sink and any transformations that will be applied.
 
     .Parameter OutputDirectory
     The directory where the ingestion workflow template will be saved. If it
     doesn't exist, it will be created.
 
-    .Parameter UseUpsert
-    If set to true, the workflow will upsert records. Otherwise, it will insert
-    records.
-    Default: true.
-
     .OUTPUTS
-    The generated GUID of the ingestion workflow template.
+    A Hashtable containing the name and GUID of the workflow template.
 
     .Example
-    # Generate a Power Automate workflow template to upsert data.
-    New-IngestionWorkflow -BaseTemplate "Flow" -ParametersFile parameters.json -MappingDefinitionFile flow_mapping.json -OutputDirectory output
-
-    .Example
-    # Generate a Logic App workflow template to insert data.
-    New-IngestionWorkflow -BaseTemplate "LogicApp" -ParametersFile parameters.json -MappingDefinitionFile mapping.json -UseUpsert $false -OutputDirectory output
+    # Generate a workflow template to ingest data.
+    New-IngestionWorkflow -WorkflowConfigFile workflow.json -OutputDirectory output
 #>
 function New-IngestionWorkflow {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The base template to use for the workflow. Options: LogicApp, Flow.")]
-        [string] $BaseTemplate,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
-        [string] $ParametersFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the mapping definition file (JSON).")]
-        [string] $MappingDefinitionFile,
+        [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
+        [string] $WorkflowConfigFile,
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the workflow template will be saved.")]
-        [string] $OutputDirectory,
-        [Parameter(Mandatory = $false, HelpMessage = "If true, perform upsert operations.")]
-        [bool] $UseUpsert = $true
+        [string] $OutputDirectory
     )
 
-    $templateGuid = ""
-    $baseApp = $BaseTemplate.ToLower()
-    if ($baseApp -eq "logicapp") {
-        $template = New-LogicAppIngestionWorkflow -ParametersFile $ParametersFile -MappingDefinitionFile $MappingDefinitionFile -UseUpsert $UseUpsert
-        $templateName = "ingest_dataverse_workflow"
+    $workflowConfig = Get-Content $WorkflowConfigFile | ConvertFrom-Json
+    $workflowType = $workflowConfig.workflowType.ToLower()
+
+    if ($null -eq $workflowConfig.dataSink -or 0 -eq @($workflowConfig.dataSink.psobject.Properties).Count) {
+        throw "No data sink was specified. Please specify a data sink."
     }
-    elseif ($baseApp -eq "flow") {
-        $template = New-FlowIngestionWorkflow -ParametersFile $ParametersFile -MappingDefinitionFile $MappingDefinitionFile -UseUpsert $UseUpsert
+
+    if ($null -eq $workflowConfig.dataSink.name -or "" -eq $workflowConfig.dataSink.name) {
+        throw "No data sink workflow name was specified. Please specify a name."
+    }
+
+    $templateGuid = ""
+    if ($workflowType -eq "logicapp") {
+        $template = New-LogicAppIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink
+        $templateName = $workflowConfig.dataSink.name
+    }
+    elseif ($workflowType -eq "flow") {
+        $template = New-FlowIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink
         $templateGuid = $template.name
         $templateName = $template.properties.displayName
     }
     else {
-        throw "The base template specified is not supported. Please choose from: LogicApp, Flow."
+        throw "The workflow type, $($workflowConfig.workflowType), is not supported. Please choose from: Flow, LogicApp."
     }
 
     # Save the workflow template to the output directory. Create directory if it doesn't exist.
@@ -86,24 +74,18 @@ function New-IngestionWorkflow {
 
 function New-LogicAppIngestionWorkflow {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
-        [string] $ParametersFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the mapping definition file (JSON).")]
-        [string] $MappingDefinitionFile,
-        [Parameter(Mandatory = $false, HelpMessage = "If true, perform upsert operations.")]
-        [bool] $UseUpsert = $true
+        [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
+        [object] $DataSinkConfig
     )
 
-    $definitionFileSuffix = $(if ($UseUpsert) { "upsert" } else { "insert" })
+    $definitionFileSuffix = $(if ($DataSinkConfig.upsert) { "upsert" } else { "insert" })
 
     $baseTemplate = Get-Content $PSScriptRoot/templates/logicapp_base.json | ConvertFrom-Json
-    $parameters = Get-Content $ParametersFile | ConvertFrom-Json
-    $mappingDefinition = Get-Content $MappingDefinitionFile | ConvertFrom-Json
     $definition = Get-Content $PSScriptRoot/templates/ingest/logicapp_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
 
-    $definition.actions.For_each_item.actions.Ingest_record.inputs.body = $mappingDefinition
+    $definition.actions.For_each_item.actions.Ingest_record.inputs.body = $DataSinkConfig.mapping
 
-    $baseTemplate.parameters = $parameters
+    $baseTemplate.parameters = $DataSinkConfig.parameters
     $baseTemplate.definition = $definition
 
     return $baseTemplate
@@ -111,23 +93,20 @@ function New-LogicAppIngestionWorkflow {
 
 function New-FlowIngestionWorkflow {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters file (JSON).")]
-        [string] $ParametersFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the mapping definition file (JSON).")]
-        [string] $MappingDefinitionFile,
-        [Parameter(Mandatory = $false, HelpMessage = "If true, perform upsert operations.")]
-        [bool] $UseUpsert = $true
+        [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
+        [object] $DataSinkConfig
     )
 
+    $useUpsert = $DataSinkConfig.upsert
     $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
-    $parameters = Get-Content $ParametersFile | ConvertFrom-Json
-    $mappingDefinition = Get-Content $MappingDefinitionFile | ConvertFrom-Json
+    $parameters = $DataSinkConfig.parameters
+    $mappingDefinition = $DataSinkConfig.mapping
 
     $baseTemplate.name = [guid]::NewGuid().ToString()
-    $baseTemplate.properties.displayName = "IngestIntoDataverse"
+    $baseTemplate.properties.displayName = $DataSinkConfig.name
 
     $hasAlternateKeys = $parameters.alternate_keys?.value.length -gt 0
-    $definitionFileSuffix = $(if ($UseUpsert -and $hasAlternateKeys) { "upsert" } else { "insert" })
+    $definitionFileSuffix = $(if ($useUpsert -and $hasAlternateKeys) { "upsert" } else { "insert" })
     $definition = Get-Content $PSScriptRoot/templates/ingest/flow_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
 
     if (($null -eq $parameters.plural_table_name?.value) -or ($parameters.plural_table_name.value -eq "")) {
@@ -135,7 +114,7 @@ function New-FlowIngestionWorkflow {
     }
     $mappingDefinition | Add-Member -NotePropertyName entityName -NotePropertyValue $parameters.plural_table_name.value
 
-    if ($UseUpsert) {
+    if ($useUpsert) {
         $guidKey = "item/$($parameters.guid_column.value)"
 
         if ($hasAlternateKeys) {

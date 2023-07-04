@@ -12,10 +12,6 @@
     Power Platform solution that can be imported into your Dataverse
     environment or used for publishing to AppSource.
 
-    .Parameter DataSource
-    The data source of the workflow.
-    Options: AzureBlobStorage, CustomConnector.
-
     .Parameter BaseTemplate
     The base template to use for generating the customized workflow.
     Options: Flow.
@@ -28,26 +24,9 @@
     The workflow configuration file that defines the trigger, the data
     source, the data sink and any transformations that will be applied.
 
-    .Parameter DataverseParametersFile
-    The path to the parameters file (JSON) that will be used to customize the
-    parameters in the Dataverse ingestion workflow template.
-
-    .Parameter MappingDefinitionFile
-    The path to the mapping definition file (JSON) that will be used to
-    customize the mapping between your source data and Dataverse table.
-
     .Parameter PackageParametersFile
     The path to the parameters file (JSON) that will be used to customize the
     solution.
-
-    .Parameter TriggerType
-    The type of trigger to use for the Industry Link.
-    Default: Manual. Options: Manual, Scheduled.
-
-    .Parameter UseUpsert
-    If set to true, the workflow will upsert records. Otherwise, it will insert
-    records.
-    Default: true.
 
     .Parameter AuthConfigFile
     The path to the authentication configuration JSON file. This file is only
@@ -57,42 +36,34 @@
 
     .Example
     # Generate an Industry Link package with a certified custom connector as the data source.
-    New-MsIndustryLink -DataSource CustomConnector -BaseTemplate "Flow" -WorkflowConfigFile workflow.json -DataverseParametersFile dataverse.parameters.json -OutputDirectory output -MappingDefinitionFile mapping.json -UseUpsert $false -TriggerType Scheduled -PackageParametersFile package.parameters.json
+    New-MsIndustryLink -DataSource CustomConnector -BaseTemplate "Flow" -WorkflowConfigFile workflow.json -OutputDirectory output -PackageParametersFile package.parameters.json
 
     # Generate an Industry Link package with Azure Blob Storage as the data source.
-    New-MsIndustryLink -DataSource AzureBlobStorage -BaseTemplate "Flow" -WorkflowConfigFile workflow.json -DataverseParametersFile dataverse.parameters.json -OutputDirectory output -MappingDefinitionFile mapping.json -UseUpsert $false -TriggerType Scheduled -PackageParametersFile package.parameters.json
+    New-MsIndustryLink -DataSource AzureBlobStorage -BaseTemplate "Flow" -WorkflowConfigFile workflow.json -OutputDirectory output -PackageParametersFile package.parameters.json
 #>
 function New-MsIndustryLink {
     param (
-        [Parameter(Mandatory = $true, HelpMessage = "The data source of the Industry Link. Options: CustomConnector, AzureBlobStorage.")]
-        [string] $DataSource,
         [Parameter(Mandatory = $true, HelpMessage = "The base template to use for the workflow. Options: LogicApp, Flow.")]
         [string] $BaseTemplate,
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the Industry Link solution will be saved.")]
         [string] $OutputDirectory,
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the Dataverse workflow parameters file (JSON).")]
-        [string] $DataverseParametersFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the ingestion mapping definition file (JSON).")]
-        [string] $MappingDefinitionFile,
         [Parameter(Mandatory = $true, HelpMessage = "The path to the package parameters file (JSON).")]
         [string] $PackageParametersFile,
-        [Parameter(Mandatory = $false, HelpMessage = "The type of trigger to use for the Industry Link. Options: Manual, Scheduled.")]
-        [string] $TriggerType = "Manual",
-        [Parameter(Mandatory = $false, HelpMessage = "If true, perform upsert operations on data ingestion.")]
-        [bool] $UseUpsert = $true,
         [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
         [string] $AuthConfigFile
     )
 
+    $workflowConfig = Get-Content $WorkflowConfigFile | ConvertFrom-Json
+    $dataSourceType = $workflowConfig.dataSource.type.ToLower()
     $workflowGuids = @{}
 
     # Create ingestion workflow template
-    $ingestionMetadata = New-IngestionWorkflow -BaseTemplate $BaseTemplate -ParametersFile $DataverseParametersFile -MappingDefinitionFile $MappingDefinitionFile -OutputDirectory $OutputDirectory -UseUpsert $UseUpsert
+    $ingestionMetadata = New-IngestionWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory
     $workflowGuids[$ingestionMetadata.name] = $ingestionMetadata.guid
 
-    if ($DataSource.ToLower() -eq "azureblobstorage") {
+    if ($dataSourceType -eq "azureblobstorage") {
         # Create transformation workflow template
         $transformMetadata = New-TransformWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory
         $workflowGuids[$transformMetadata.name] = $transformMetadata.guid
