@@ -42,10 +42,7 @@
           "apiId": ""
         },
         "parameters": {},
-        "authentication": {
-          "type": "Raw",
-          "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
-        }
+        "authentication": "@parameters('$authentication')"
       }
     },
     "Ingest_data_subflow": {

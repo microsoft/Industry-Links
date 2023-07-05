@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "outputs": {},
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    }
+  },
+  "triggers": {
+    "Recurrence": {
+      "recurrence": {
+        "interval": 1,
+        "frequency": "Minute"
+      },
+      "type": "Recurrence"
+    }
+  },
+  "actions": {
+    "Retrieve_data_using_custom_connector": {
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['contosoapi']['connectionId']"
+          }
+        },
+        "method": "get",
+        "path": "/transactions"
+      },
+      "runAfter": {},
+      "type": "ApiConnection"
+    },
+    "Ingest_data_subflow": {
+      "runAfter": {
+        "Retrieve_data_using_custom_connector": ["Succeeded"]
+      },
+      "type": "Workflow",
+      "inputs": {
+        "host": {
+          "triggerName": "manual",
+          "workflow": {
+            "id": "[resourceId('Microsoft.Logic/workflows', 'ingestData')]"
+          }
+        },
+        "body": {
+          "payload": "@body('Retrieve_data_using_custom_connector')"
+        }
+      }
+    }
+  }
+}

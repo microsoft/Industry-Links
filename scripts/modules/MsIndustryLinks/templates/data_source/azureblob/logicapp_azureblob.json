@@ -1,0 +1,79 @@
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
+    },
+    "storage_account_name": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "storage_container_name": {
+      "defaultValue": "",
+      "type": "String"
+    }
+  },
+  "triggers": {
+    "When_a_file_is_added_or_modified": {
+      "recurrence": {
+        "frequency": "Minute",
+        "interval": 1
+      },
+      "splitOn": "@triggerBody()",
+      "type": "ApiConnection",
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['azureblob']['connectionId']"
+          }
+        },
+        "method": "get",
+        "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent(parameters('storage_account_name'))}/triggers/batch/onupdatedfile",
+        "queries": {
+          "checkBothCreatedAndModifiedDateTime": false,
+          "folderId": "@parameters('storage_container_name')",
+          "maxFileCount": 100
+        }
+      }
+    }
+  },
+  "actions": {
+    "Get_modified_file_content_using_path": {
+      "inputs": {
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['azureblob']['connectionId']"
+          }
+        },
+        "method": "get",
+        "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent(parameters('storage_account_name')))}/GetFileContentByPath",
+        "queries": {
+          "inferContentType": true,
+          "path": "@triggerBody()?['Path']",
+          "queryParametersSingleEncoded": true
+        }
+      },
+      "runAfter": {},
+      "type": "ApiConnection"
+    },
+    "Ingest_data_subflow": {
+      "inputs": {
+        "host": {
+          "triggerName": "manual",
+          "workflow": {
+            "id": "[resourceId('Microsoft.Logic/workflows', 'ingestData')]"
+          }
+        },
+        "body": {
+          "payload": "@body('Get_modified_file_content_using_path')"
+        }
+      },
+      "runAfter": {
+        "Get_modified_file_content_using_path": ["Succeeded"]
+      },
+      "type": "Workflow"
+    }
+  }
+}

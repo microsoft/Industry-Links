@@ -222,11 +222,11 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
 
     # Update data transformation sub-workflow configuration
     $transformWorkflowGuid = $WorkflowGuids[$WorkflowConfig.dataTransform.name]
-    $definition.actions.Transform_CSV_data_to_JSON.inputs.host.workflowReferenceName = $transformWorkflowGuid
+    $definition.actions.Transform_data_subflow.inputs.host.workflowReferenceName = $transformWorkflowGuid
 
     # Update data ingestion sub-workflow configuration
     $dataSinkWorkflowGuid = $WorkflowGuids[$WorkflowConfig.dataSink.name]
-    $definition.actions.Ingest_Data_Subflow.inputs.host.workflowReferenceName = $dataSinkWorkflowGuid
+    $definition.actions.Ingest_data_subflow.inputs.host.workflowReferenceName = $dataSinkWorkflowGuid
 
     $baseTemplate.properties.definition = $definition
     $baseTemplate.properties.connectionReferences = @{
