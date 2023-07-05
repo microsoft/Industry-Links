@@ -42,16 +42,16 @@ function New-IngestionWorkflow {
         throw "No data sink was specified. Please specify a data sink."
     }
 
-    if ($null -eq $workflowConfig.dataSink.name -or "" -eq $workflowConfig.dataSink.name) {
-        throw "No data sink workflow name was specified. Please specify a name."
-    }
-
     $templateGuid = ""
     if ($workflowType -eq "logicapp") {
         $template = New-LogicAppIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink
-        $templateName = $workflowConfig.dataSink.name
+        $templateName = "$($workflowConfig.name)_Sink"
     }
     elseif ($workflowType -eq "flow") {
+        if ($null -eq $workflowConfig.dataSink.name -or "" -eq $workflowConfig.dataSink.name) {
+            throw "No data sink workflow name was specified. Please specify a name."
+        }
+
         $template = New-FlowIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink
         $templateGuid = $template.name
         $templateName = $template.properties.displayName
@@ -85,6 +85,17 @@ function New-LogicAppIngestionWorkflow {
 
     $definition.actions.For_each_item.actions.Ingest_record.inputs.body = $DataSinkConfig.mapping
 
+    $dataSinkConnections = @{
+        value = @{
+            commondataservice = @{
+                connectionId   = "[resourceId('Microsoft.Web/connections', 'commondataservice')]"
+                connectionName = "commondataservice"
+                id             = "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, 'commondataservice')]"
+            }
+        }
+    }
+    $DataSinkConfig.parameters | Add-Member -NotePropertyName '$connections' -NotePropertyValue $dataSinkConnections
+    $DataSinkConfig.parameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]"}
     $baseTemplate.parameters = $DataSinkConfig.parameters
     $baseTemplate.definition = $definition
 

@@ -90,6 +90,11 @@
       "runAfter": {
         "Initialize_Loop_Index": ["Succeeded"]
       },
+      "runtimeConfiguration": {
+        "concurrency": {
+          "repetitions": 1
+        }
+      },
       "type": "Foreach"
     },
     "Get_column_names": {

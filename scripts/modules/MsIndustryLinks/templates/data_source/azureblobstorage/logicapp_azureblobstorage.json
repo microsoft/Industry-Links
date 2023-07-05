@@ -30,7 +30,7 @@
           }
         },
         "method": "get",
-        "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent(parameters('storage_account_name'))}/triggers/batch/onupdatedfile",
+        "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent(parameters('storage_account_name')))}/triggers/batch/onupdatedfile",
         "queries": {
           "checkBothCreatedAndModifiedDateTime": false,
           "folderId": "@parameters('storage_container_name')",
@@ -63,7 +63,7 @@
         "host": {
           "triggerName": "manual",
           "workflow": {
-            "id": "[resourceId('Microsoft.Logic/workflows', 'ingestData')]"
+            "id": "[resourceId('Microsoft.Logic/workflows', 'ContosoIndustryLink_Sink')]"
           }
         },
         "body": {

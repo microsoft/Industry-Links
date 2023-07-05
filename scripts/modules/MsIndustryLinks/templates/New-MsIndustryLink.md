@@ -9,8 +9,8 @@ Generates a deployable package that contains a set of workflows that retrieves d
 ```powershell
 New-MsIndustryLink
     -WorkflowConfigFile <String>
-    -PackageParametersFile <String>
     -OutputDirectory <String>
+    [-PackageParametersFile] <String>
     [-AuthConfigFile] <String>
 ```
 
@@ -20,21 +20,20 @@ Generates a set of workflow templates that will insert or upsert data into a Dat
 
 ## Examples
 
-### Example 1: Generate an Industry Link package with a certified custom connector as the data source
+### Example 1: Generate a Flow Industry Link package
 
 ```powershell
 New-MsIndustryLink
-    -WorkflowConfigFile workflow.json
-    -PackageParametersFile package.parameters.json
+    -WorkflowConfigFile flow_workflow.json
     -OutputDirectory output
+    -PackageParametersFile package.parameters.json
 ```
 
-### Example 2: Generate an Industry Link package with Azure Blob Storage as the data source
+### Example 2: Generate Logic App Industry Link templates
 
 ```powershell
 New-MsIndustryLink
-    -WorkflowConfigFile workflow.json
-    -PackageParametersFile package.parameters.json
+    -WorkflowConfigFile logicapp_workflow.json
     -OutputDirectory output
 ```
 
@@ -49,18 +48,18 @@ The workflow configuration file that defines the trigger, the data source, the d
 | Type:          | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
 | Default value: | None                                                                                                                  |
 
-### -PackageParametersFile
+### -OutputDirectory
 
-The path to the parameters file (JSON) that will be used to customize the solution.
+The directory where the generated deployable package will be saved. If it doesn't exist, it will be created.
 
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Type:          | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
 | Default value: | None                                                                                                                  |
 
-### -OutputDirectory
+### -PackageParametersFile
 
-The directory where the generated deployable package will be saved. If it doesn't exist, it will be created.
+The path to the parameters file (JSON) that will be used to customize the solution. Not required for Logic App workflow type.
 
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |

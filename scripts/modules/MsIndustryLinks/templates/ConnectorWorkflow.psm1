@@ -16,13 +16,13 @@
     The workflow configuration file that defines the trigger, the data
     source, the data sink and any transformations that will be applied.
 
-    .Parameter PackageParametersFile
-    The path to the parameters file (JSON) that will be used to customize the
-    solution.
-
     .Parameter OutputDirectory
     The directory where the generated deployable package will be saved. If it
     doesn't exist, it will be created.
+
+    .Parameter PackageParametersFile
+    The path to the parameters file (JSON) that will be used to customize the
+    solution. Not required for Logic App workflow type.
 
     .Parameter AuthConfigFile
     The path to the authentication configuration JSON file. This file is only
@@ -31,20 +31,20 @@
     principal that will be used to authenticate with the Dataverse API.
 
     .Example
-    # Generate an Industry Link package with a certified custom connector as the data source.
-    New-MsIndustryLink -DataSource CustomConnector -WorkflowConfigFile workflow.json -PackageParametersFile package.parameters.json -OutputDirectory output
+    # Generate a Flow Industry Link package
+    New-MsIndustryLink -WorkflowConfigFile flow_workflow.json -OutputDirectory output -PackageParametersFile package.parameters.json
 
-    # Generate an Industry Link package with Azure Blob Storage as the data source.
-    New-MsIndustryLink -DataSource AzureBlobStorage -WorkflowConfigFile workflow.json -PackageParametersFile package.parameters.json -OutputDirectory output
+    # Generate Logic App Industry Link templates
+    New-MsIndustryLink -WorkflowConfigFile logicapp_workflow.json -OutputDirectory output
 #>
 function New-MsIndustryLink {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
-        [Parameter(Mandatory = $true, HelpMessage = "The path to the package parameters file (JSON).")]
-        [string] $PackageParametersFile,
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the Industry Link solution will be saved.")]
         [string] $OutputDirectory,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the package parameters file (JSON).")]
+        [string] $PackageParametersFile,
         [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
         [string] $AuthConfigFile
     )
@@ -68,6 +68,10 @@ function New-MsIndustryLink {
     New-DataSourceWorkflow -WorkflowConfigFile $WorkflowConfigFile -TemplateDirectory $OutputDirectory -WorkflowGuids $workflowGuids -AuthConfigFile $AuthConfigFile
 
     if ("flow" -eq $workflowType) {
+        if ($null -eq $PackageParametersFile -or "" -eq $PackageParametersFile) {
+            throw "PackageParametersFile is required for Flow workflows."
+        }
+
         # Package Industry Link into a solution
         New-WorkflowPackage -ParametersFile $PackageParametersFile -TemplateDirectory $OutputDirectory -OutputDirectory $OutputDirectory
     }

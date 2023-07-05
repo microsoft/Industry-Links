@@ -1,11 +1,16 @@
-// Use this template to generate a workflow.json file for
-// Logic App or Flow. Save a copy and keep only what is
+// Use this template to generate a workflow configuration
+// file for LogicApp. Save a copy and keep only what is
 // required for your use case. Remove all comments.
 {
-  "workflowType": "Flow",
+  "workflowType": "LogicApp",
+  "name": "ContosoIndustryLink",
 
   "trigger": {
-    "type": "Scheduled",
+    "type": "{Manual/Scheduled}",
+
+    // Required parameters for Scheduled trigger type
+    // and certain data source types (AzureBlobStorage,
+    // EventHub)
     "parameters": {
       "interval": "1",
       "frequency": "{Second/Minute/Hour/Day/Week/Month}"
@@ -13,50 +18,62 @@
   },
 
   "dataSource": {
+    // Any of: AzureBlobStorage, CustomConnector, EventHub
     "type": "AzureBlobStorage",
-    "name": "GetDataFromAzureBlobStorage",
 
     // Parameters required by the data source.
-    // For example, Azure Blob Storage requires the storage
-    // account (dataset) and container (folderId) to check
-    // for data files.
     "parameters": {
-      "dataset": "mystorageaccount",
-      "folderId": "mycontainer",
-      "maxFileCount": 100
+      // Azure Blob Storage requires the storage
+      // account and container to check for data files.
+      "storage_account_name": {
+        "value": "mystorageaccount"
+      },
+      "storage_container_name": {
+        "value": "mycontainer"
+      },
+
+      // Optional Custom Connector parameters
+      "custom_connector_parameters": {
+        "value": {
+          "my_param": "",
+          "my_param2": ""
+        }
+      },
+
+      // Event Hubs requires the event hub name,
+      // consumer group, content type and maximum
+      // events count.
+      "event_hub_name": {
+        "value": "myeventhub"
+      },
+      "event_hub_parameters": {
+        "value": {
+          "consumerGroupName": "$Default",
+          "contentType": "application/json",
+          "maximumEventsCount": 50
+        }
+      }
     },
 
     ///--- CUSTOM CONNECTORS ONLY ---///
     "isCertified": false,
-    "connection": {
-      "connectorId": "", // required for non-certified custom connectors
-      "apiName": "",
-      "operationId": ""
+    "properties": {
+      "name": "contosoapi",
+      "method": "get",
+      "path": "/transactions",
+      "queries": {},
+      "body": {}
     }
   },
 
   // Optional
   "dataTransform": {
-    "type": "csv_to_json",
-    "name": "TransformCSVToJSON"
+    "type": "csv_to_json"
   },
 
   "dataSink": {
-    "name": "IngestIntoDataverse",
     "upsert": false,
     "parameters": {
-      "$connections": {
-        "value": {
-          "commondataservice": {
-            "connectionId": "/subscriptions/{subscription}/resourceGroups/{resource-group}/providers/Microsoft.Web/connections/commondataservice",
-            "connectionName": "commondataservice",
-            "id": "/subscriptions/{subscription}/providers/Microsoft.Web/locations/{location}/managedApis/commondataservice"
-          }
-        }
-      },
-      "organization_url": {
-        "value": "https://org12345.crm.dynamics.com"
-      },
       "plural_table_name": {
         "value": "contoso_transactions"
       },
