@@ -54,15 +54,22 @@
   },
 
   "dataSink": {
+    "type": "Dataverse",
     "name": "IngestIntoDataverse",
-    "upsert": false,
+
+    "upsert": false, // Dataverse only
+
+    // Parameters required by the data sink.
+    // This can include parameters to a custom
+    // connector data sink.
     "parameters": {
+
+      ///--- DATAVERSE ONLY ---///
       "plural_table_name": {
         "value": "contoso_transactions"
       },
 
-      ///--- UPSERT ONLY ---///
-
+      ///--- DATAVERSE UPSERT ONLY ---///
       // The destination table GUID column name.
       "guid_column": {
         "value": "contoso_transactionid"
@@ -80,6 +87,15 @@
       }
     },
     "mapping": {
+      ///--- CUSTOM CONNECTORS ONLY ---///
+      // remap the input data into the format required by the API
+      "customer_id": "@item()?['contoso_customerid']",
+      "merchant_name": "@item()?['contoso_merchantname']",
+      "timestamp": "@item()?['contoso_timestamp']",
+      "amount": "@item()?['contoso_amount']",
+      "merchant_type": "@item()?['contoso_merchanttype']"
+
+      ///--- DATAVERSE ONLY ---///
       // set record's GUID. Leave out to autogenerate GUID.
       "item/contoso_transactionid": "@item()['transaction_id']",
 
@@ -89,6 +105,14 @@
       "item/contoso_timestamp": "@parseDateTime(item()['timestamp'])",
       "item/contoso_amount": "@item()['amount']",
       "item/contoso_merchanttype": "@item()['merchant_type']"
+    },
+
+    ///--- CUSTOM CONNECTORS ONLY ---///
+    "isCertified": false,
+    "connection": {
+      "connectorId": "",  // required for non-certified custom connectors only
+      "apiName": "",      // required for certified custom connectors only
+      "operationId": ""
     }
   }
 }

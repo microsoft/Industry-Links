@@ -32,7 +32,9 @@ function New-IngestionWorkflow {
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the workflow template will be saved.")]
-        [string] $OutputDirectory
+        [string] $OutputDirectory,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
+        [string] $AuthConfigFile
     )
 
     $workflowConfig = Get-Content $WorkflowConfigFile | ConvertFrom-Json
@@ -52,7 +54,7 @@ function New-IngestionWorkflow {
             throw "No data sink workflow name was specified. Please specify a name."
         }
 
-        $template = New-FlowIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink
+        $template = New-FlowIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink -AuthConfigFile $AuthConfigFile
         $templateGuid = $template.name
         $templateName = $template.properties.displayName
     }
@@ -105,7 +107,9 @@ function New-LogicAppIngestionWorkflow {
 function New-FlowIngestionWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
-        [object] $DataSinkConfig
+        [object] $DataSinkConfig,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
+        [string] $AuthConfigFile
     )
 
     $dataSink = $DataSinkConfig.type.ToLower()
@@ -114,14 +118,77 @@ function New-FlowIngestionWorkflow {
     if ($dataSink -eq "dataverse") {
         $template = New-FlowDataverseIngestionWorkflow -DataSinkConfig $DataSinkConfig
     }
+    elseif ($dataSink -eq "customconnector") {
+        $template = New-FlowCustomConnectorIngestionWorkflow -DataSinkConfig $DataSinkConfig -AuthConfigFile $AuthConfigFile
+    }
     else {
-        throw "The data sink type, $($DataSinkConfig.type), is not supported. Please choose from: Dataverse."
+        throw "The data sink type, $($DataSinkConfig.type), is not supported. Please choose from: CustomConnector, Dataverse."
     }
 
     $template.name = [guid]::NewGuid().ToString()
     $template.properties.displayName = $DataSinkConfig.name
 
     return $template
+}
+
+function New-FlowCustomConnectorIngestionWorkflow {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
+        [object] $DataSinkConfig,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the authentication configuration JSON file.")]
+        [string] $AuthConfigFile
+    )
+
+    $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/ingest/customconnector/flow_customconnector.json | ConvertFrom-Json
+
+    # Map the input data to the format of the custom connector API
+    $definition.actions.Map_data.inputs.select = $DataSinkConfig.mapping
+
+    # Set variables based on whether the custom connector has been certified
+    if ($DataSinkConfig.isCertified) {
+        $definition.actions.Ingest_records.inputs.host.apiId = "/providers/Microsoft.PowerApps/apis/$($DataSinkConfig.connection.apiName)"
+
+        $apiConfig = @{
+            name = $DataSinkConfig.connection.apiName
+        }
+
+        $connectionReferenceName = "$($DataSinkConfig.connection.apiName)_ref"
+    }
+    else {
+        if ($null -eq $AuthConfigFile -or $AuthConfigFile -eq "") {
+            throw "The authentication configuration file (-AuthConfigFile) is required for uncertified custom connectors."
+        }
+
+        $authConfig = Get-Content $AuthConfigFile | ConvertFrom-Json
+        $connectorIdentifiers = Get-ConnectorIdentifiers -ConnectorId $DataSinkConfig.connection.connectorId -AuthConfig $authConfig
+
+        $apiConfig = $connectorIdentifiers
+
+        $connectionReferenceName = "$($connectorIdentifiers.logicalName)_ref"
+    }
+
+    # Update the connector operation ID
+    $definition.actions.Ingest_records.inputs.host.operationId = $DataSinkConfig.connection.operationId
+
+    # Parameters are required to pass the data into the custom connector
+    if ($null -eq $DataSinkConfig.parameters -or 0 -eq @($DataSinkConfig.parameters.psobject.Properties).Count) {
+        throw "No parameters were specified for the custom connector data sink."
+    }
+    $definition.actions.Ingest_records.inputs.parameters = $DataSinkConfig.parameters
+
+    $baseTemplate.properties.definition = $definition
+    $baseTemplate.properties.connectionReferences = @{
+        customconnector = @{
+            runtimeSource = "embedded"
+            connection    = @{
+                connectionReferenceLogicalName = $connectionReferenceName
+            }
+            api           = $apiConfig
+        }
+    }
+
+    return $baseTemplate
 }
 
 function New-FlowDataverseIngestionWorkflow {

@@ -26,9 +26,9 @@ Create a configuration file for the workflow with the required parameters for yo
 | --------------- | ------------------------------------ |
 | Data sources    | Azure Blob Storage, Custom Connector |
 | Data transforms | CSV to JSON                          |
-| Data sinks      | Dataverse                            |
+| Data sinks      | Custom Connector, Dataverse          |
 
-The custom connector data source supports both certified and non-certified connectors.
+The custom connector data source and sink supports both certified and non-certified connectors.
 
 A certifed custom connector allows for the connector to be publicly available for all users across all organizations. See the [Custom Connectors documentation](connectors/power_platform_custom_connector/README.md) to learn more about certifying your custom connector.
 

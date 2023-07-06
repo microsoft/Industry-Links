@@ -1,0 +1,75 @@
+{
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "$connections": {
+        "defaultValue": {},
+        "type": "Object"
+      },
+      "$authentication": {
+        "defaultValue": {},
+        "type": "SecureObject"
+      }
+    },
+    "triggers": {
+      "manual": {
+        "type": "Request",
+        "kind": "Button",
+        "inputs": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "payload": {
+                "title": "Payload",
+                "type": "string",
+                "x-ms-dynamically-added": true,
+                "description": "The array of items to ingest into Dataverse.",
+                "x-ms-content-hint": "TEXT"
+              }
+            },
+            "required": ["payload"]
+          }
+        }
+      }
+    },
+    "actions": {
+      "Map_data": {
+        "type": "Select",
+        "inputs": {
+          "from": "@array(json(triggerBody()['payload']))",
+          "select": {}
+        }
+      },
+      "Ingest_records": {
+        "runAfter": {
+          "Map_data": ["Succeeded"]
+        },
+        "type": "OpenApiConnection",
+        "inputs": {
+          "host": {
+            "connectionName": "customconnector",
+            "operationId": "",
+            "apiId": ""
+          },
+          "parameters": {},
+          "authentication": "@parameters('$authentication')"
+        }
+      },
+      "Flow_output": {
+        "runAfter": {
+          "Ingest_records": ["Succeeded"]
+        },
+        "type": "Response",
+        "kind": "PowerApp",
+        "inputs": {
+          "statusCode": 200,
+          "body": {},
+          "schema": {
+            "type": "object",
+            "properties": {}
+          }
+        }
+      }
+    }
+  }
+  
