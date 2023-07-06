@@ -5,7 +5,7 @@
   "workflowType": "Flow",
 
   "trigger": {
-    "type": "Scheduled",
+    "type": "{Manual/Scheduled}",
     "parameters": {
       "interval": "1",
       "frequency": "{Second/Minute/Hour/Day/Week/Month}"
@@ -13,6 +13,7 @@
   },
 
   "dataSource": {
+    // Any of: AzureBlobStorage, CustomConnector
     "type": "AzureBlobStorage",
     "name": "GetDataFromAzureBlobStorage",
 

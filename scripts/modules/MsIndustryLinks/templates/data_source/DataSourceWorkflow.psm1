@@ -5,12 +5,12 @@
     .Synopsis
     Generates a workflow template that defines the trigger, the data
     source and any workflows called by this workflow. Supports Power
-    Automate Flows.
+    Automate Flows and Logic App.
 
     .Description
     Generates a workflow template that defines the trigger, the data
     source and any workflows called by this workflow. This function
-    will generate a Power Automate Flow template.
+    will generate a Power Automate Flow or Logic App template.
 
     .Parameter WorkflowConfigFile
     The workflow configuration file that defines the trigger, the data

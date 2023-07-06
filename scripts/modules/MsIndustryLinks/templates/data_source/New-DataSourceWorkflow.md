@@ -2,7 +2,7 @@
 
 Module: [MsIndustryLinks](../../README.md)
 
-Generates a workflow template that defines the trigger, the data source and any workflows called by this workflow. Supports Power Automate Flows.
+Generates a workflow template that defines the trigger, the data source and any workflows called by this workflow. Supports Power Automate Flows and Logic App.
 
 ## Syntax
 
@@ -16,7 +16,7 @@ New-DataSourceWorkflow
 
 ## Description
 
-Generates a workflow template that defines the trigger, the data source and any workflows called by this workflow. This cmdlet will generate a Power Automate Flow template.
+Generates a workflow template that defines the trigger, the data source and any workflows called by this workflow. This cmdlet will generate a Power Automate Flow or Logic App template.
 
 ## Examples
 
