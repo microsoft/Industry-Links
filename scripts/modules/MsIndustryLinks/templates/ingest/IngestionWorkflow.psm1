@@ -81,7 +81,7 @@ function New-LogicAppIngestionWorkflow {
     $definitionFileSuffix = $(if ($DataSinkConfig.upsert) { "upsert" } else { "insert" })
 
     $baseTemplate = Get-Content $PSScriptRoot/templates/logicapp_base.json | ConvertFrom-Json
-    $definition = Get-Content $PSScriptRoot/templates/ingest/logicapp_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/ingest/dataverse/logicapp_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
 
     $definition.actions.For_each_item.actions.Ingest_record.inputs.body = $DataSinkConfig.mapping
 
@@ -118,7 +118,7 @@ function New-FlowIngestionWorkflow {
 
     $hasAlternateKeys = $parameters.alternate_keys?.value.length -gt 0
     $definitionFileSuffix = $(if ($useUpsert -and $hasAlternateKeys) { "upsert" } else { "insert" })
-    $definition = Get-Content $PSScriptRoot/templates/ingest/flow_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/ingest/dataverse/flow_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
 
     if (($null -eq $parameters.plural_table_name?.value) -or ($parameters.plural_table_name.value -eq "")) {
         throw "Parameters file is missing the 'plural_table_name' parameter."
