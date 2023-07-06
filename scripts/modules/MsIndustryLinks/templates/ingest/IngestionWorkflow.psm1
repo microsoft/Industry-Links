@@ -108,13 +108,32 @@ function New-FlowIngestionWorkflow {
         [object] $DataSinkConfig
     )
 
+    $dataSink = $DataSinkConfig.type.ToLower()
+
+    # Configure the data sink
+    if ($dataSink -eq "dataverse") {
+        $template = New-FlowDataverseIngestionWorkflow -DataSinkConfig $DataSinkConfig
+    }
+    else {
+        throw "The data sink type, $($DataSinkConfig.type), is not supported. Please choose from: Dataverse."
+    }
+
+    $template.name = [guid]::NewGuid().ToString()
+    $template.properties.displayName = $DataSinkConfig.name
+
+    return $template
+}
+
+function New-FlowDataverseIngestionWorkflow {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
+        [object] $DataSinkConfig
+    )
+
     $useUpsert = $DataSinkConfig.upsert
     $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
     $parameters = $DataSinkConfig.parameters
     $mappingDefinition = $DataSinkConfig.mapping
-
-    $baseTemplate.name = [guid]::NewGuid().ToString()
-    $baseTemplate.properties.displayName = $DataSinkConfig.name
 
     $hasAlternateKeys = $parameters.alternate_keys?.value.length -gt 0
     $definitionFileSuffix = $(if ($useUpsert -and $hasAlternateKeys) { "upsert" } else { "insert" })
