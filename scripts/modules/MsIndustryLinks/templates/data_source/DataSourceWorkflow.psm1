@@ -97,6 +97,9 @@ function New-FlowDataSourceWorkflow {
         "customconnector" {
             $template = New-FlowCustomConnectorDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
         }
+        "dataverse" {
+            $template = New-FlowDataverseDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
+        }
         "eventhub" {
             $template = New-FlowEventHubDataSourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
             $triggerType = "datasource"
@@ -244,6 +247,45 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
             }
             api           = @{
                 name = "shared_azureblob"
+            }
+        }
+    }
+
+    return $baseTemplate
+}
+
+function New-FlowDataverseDatasourceWorkflow {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The mapping of workflow templates to GUIDs.")]
+        [hashtable] $WorkflowGuids
+    )
+
+    $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/data_source/dataverse/flow_dataverse.json | ConvertFrom-Json
+    $parameters = $WorkflowConfig.dataSource.parameters
+
+    if (($null -eq $parameters.entityName) -or ($parameters.entityName -eq "")) {
+        throw "Parameters file is missing the 'entityName' parameter."
+    }
+
+    # Update the Dataverse parameters
+    $definition.actions.Retrieve_data_from_Dataverse.inputs.parameters = $parameters
+
+    # Update data ingestion sub-workflow configuration
+    $dataSinkWorkflowGuid = $WorkflowGuids[$WorkflowConfig.dataSink.name]
+    $definition.actions.Ingest_data_subflow.inputs.host.workflowReferenceName = $dataSinkWorkflowGuid
+
+    $baseTemplate.properties.definition = $definition
+    $baseTemplate.properties.connectionReferences = @{
+        shared_commondataserviceforapps = @{
+            runtimeSource = "embedded"
+            connection    = @{
+                connectionReferenceLogicalName = "shared_commondataserviceforapps_ref"
+            }
+            api           = @{
+                name = "shared_commondataserviceforapps"
             }
         }
     }

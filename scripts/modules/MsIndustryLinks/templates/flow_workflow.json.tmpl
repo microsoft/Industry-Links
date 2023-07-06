@@ -29,6 +29,14 @@
       "folderId": "mycontainer",
       "maxFileCount": 100,
 
+      // Dataverse requires the plural table name
+      // (entityName) to know which table to retrieve
+      // data from.
+      "entityName": "contoso_transactions",
+      "$select": "",      // optional: comma-separated list of column unique names to limit which columns are returned
+      "$filter": "",      // optional: OData style filter expression to limit which rows are returned
+      "$orderby": ""       // optional: Columns to sort by in OData orderBy style (excluding lookups)
+
       // Event Hubs requires the event hub name,
       // consumer group, content type and maximum
       // events count.
