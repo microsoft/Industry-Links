@@ -5,12 +5,12 @@
     .Synopsis
     Generates a workflow template that defines the trigger, the data
     source and any workflows called by this workflow. Supports Power
-    Automate Flows.
+    Automate Flows and Logic App.
 
     .Description
     Generates a workflow template that defines the trigger, the data
     source and any workflows called by this workflow. This function
-    will generate a Power Automate Flow template.
+    will generate a Power Automate Flow or Logic App template.
 
     .Parameter WorkflowConfigFile
     The workflow configuration file that defines the trigger, the data
@@ -54,13 +54,14 @@ function New-DataSourceWorkflow {
     $workflowType = $workflowConfig.workflowType.ToLower()
 
     if ($workflowType -eq "logicapp") {
-        throw "Logic App functionality not yet implemented. Please choose from: Flow."
+        $template = New-LogicAppDataSourceWorkflow -WorkflowConfig $workflowConfig
+        $templateFilename = $workflowConfig.name
     }
     elseif ($workflowType -eq "flow") {
         if ($null -eq $WorkflowGuids -or $WorkflowGuids.Count -eq 0) {
             $WorkflowGuids = Get-WorkflowGuids -TemplateDirectory $TemplateDirectory -WorkflowConfig $workflowConfig
         }
-        $template = New-FlowDatasourceWorkflow -WorkflowConfig $workflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
+        $template = New-FlowDataSourceWorkflow -WorkflowConfig $workflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
         $templateFilename = $template.properties.displayName
     }
     else {
@@ -73,7 +74,7 @@ function New-DataSourceWorkflow {
     $template | ConvertTo-Json -Depth 20 | Out-File "$TemplateDirectory/$templateFilename.json"
 }
 
-function New-FlowDatasourceWorkflow {
+function New-FlowDataSourceWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
@@ -212,7 +213,7 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
     )
 
     $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
-    $definition = Get-Content $PSScriptRoot/templates/data_source/azureblob/flow_azureblob.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/data_source/azureblobstorage/flow_azureblobstorage.json | ConvertFrom-Json
     $dataSourceConfig = $WorkflowConfig.dataSource
 
     # Update the Azure Blob Storage parameters
@@ -240,6 +241,59 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
             }
         }
     }
+
+    return $baseTemplate
+}
+
+function New-LogicAppDataSourceWorkflow {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig
+    )
+
+    $baseTemplate = Get-Content $PSScriptRoot/templates/logicapp_base.json | ConvertFrom-Json
+
+    $dataSourceType = $WorkflowConfig.dataSource.type.ToLower()
+    $isCustomConnector = "customconnector" -eq $dataSourceType
+
+    # Set the workflow parameters for the data source
+    if ($isCustomConnector) {
+        $apiName = $WorkflowConfig.dataSource.properties.name
+    }
+    else {
+        $apiName = Get-ApiName -DataSourceType $dataSourceType
+    }
+    $dataSourceParameters = $WorkflowConfig.dataSource.parameters
+    $dataSourceConnections = @{
+        value = @{
+            $apiName = @{
+                connectionId   = "[resourceId('Microsoft.Web/connections', '$apiName')]"
+                connectionName = $apiName
+                id             = "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, '$apiName')]"
+            }
+        }
+    }
+    $dataSourceParameters | Add-Member -MemberType NoteProperty -Name '$connections' -Value $dataSourceConnections
+    $baseTemplate.parameters = $dataSourceParameters
+
+    # Set the custom connector properties if data source is CustomConnector
+    $definition = Get-Content $PSScriptRoot/templates/data_source/$dataSourceType/logicapp_$dataSourceType.json | ConvertFrom-Json
+    if ($isCustomConnector) {
+        Set-LogicAppCustomConnectorConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
+    }
+
+    # Add data transform action if defined in the workflow configuration
+    if ($null -ne $WorkflowConfig.dataTransform.type) {
+        Set-LogicAppTransformConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
+    }
+
+    # Set the data sink workflow ID
+    $definition.actions.Ingest_data_subflow.inputs.host.workflow.id = "[resourceId('Microsoft.Logic/workflows', '$($WorkflowConfig.name)_Sink')]"
+
+    # Configure the trigger
+    Set-Trigger -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
+
+    $baseTemplate.definition = $definition
 
     return $baseTemplate
 }
@@ -336,6 +390,159 @@ function Get-WorkflowGuids {
     }
 
     return $workflowGuids
+}
+
+function Get-ApiName {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The data source type.")]
+        [string] $DataSourceType
+    )
+
+    switch ($DataSourceType.ToLower()) {
+        "azureblobstorage" {
+            return "azureblob"
+        }
+        "dataverse" {
+            return "commondataservice"
+        }
+        "eventhub" {
+            return "eventhubs"
+        }
+        default {
+            throw "The connection type, $DataSourceType, is not supported."
+        }
+    }
+}
+
+function Get-TransformDataSubflow {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow's name.")]
+        [string] $WorkflowName,
+        [Parameter(Mandatory = $true, HelpMessage = "The subflow input value.")]
+        [string] $Text,
+        [Parameter(Mandatory = $true, HelpMessage = "The subflow runAfter value")]
+        [object] $RunAfter
+    )
+
+    return @{
+        inputs   = @{
+            host = @{
+                triggerName = "manual"
+                workflow    = @{
+                    id = "[resourceId('Microsoft.Logic/workflows', '$($WorkflowName)_Transform')]"
+                }
+            }
+            body = $Text
+        }
+        runAfter = $RunAfter
+        type     = "Workflow"
+    }
+}
+
+function Set-LogicAppCustomConnectorConfiguration {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow definition object.")]
+        [object] $Definition
+    )
+
+    $apiName = $WorkflowConfig.dataSource.properties.name
+    $method = $WorkflowConfig.dataSource.properties.method.ToLower()
+    $Definition.actions.Retrieve_data_using_custom_connector.inputs.host.connection.name = "@parameters('`$connections')['$apiName']['connectionId']"
+    $Definition.actions.Retrieve_data_using_custom_connector.inputs.method = $method
+    $Definition.actions.Retrieve_data_using_custom_connector.inputs.path = $WorkflowConfig.dataSource.properties.path
+
+    if ($null -ne $WorkflowConfig.dataSource.properties.queries) {
+        $Definition.actions.Retrieve_data_using_custom_connector.inputs | Add-Member -MemberType NoteProperty -Name "queries" -Value $WorkflowConfig.dataSource.properties.queries
+    }
+    $bodyMethods = @("post", "put", "patch")
+    if ($null -ne $WorkflowConfig.dataSource.properties.body -and $method -in $bodyMethods) {
+        $Definition.actions.Retrieve_data_using_custom_connector.inputs | Add-Member -MemberType NoteProperty -Name "body" -Value $WorkflowConfig.dataSource.properties.body
+    }
+}
+
+function Set-LogicAppTransformConfiguration {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow definition object.")]
+        [object] $Definition
+    )
+
+    $ingestDataSubflow = $Definition.actions.Ingest_data_subflow
+    $dataTransformSubflow = Get-TransformDataSubflow -WorkflowName $WorkflowConfig.name -Text $ingestDataSubflow.inputs.body.payload -RunAfter $ingestDataSubflow.runAfter
+    $Definition.actions | Add-Member -MemberType NoteProperty -Name "Transform_data_subflow" -Value $dataTransformSubflow
+
+    $Definition.actions.Ingest_data_subflow.inputs.body.payload = "@body('Transform_data_subflow')"
+    $Definition.actions.Ingest_data_subflow.runAfter = @{
+        Transform_data_subflow = @("Succeeded")
+    }
+}
+
+function Get-TriggerType {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig
+    )
+
+    $dataSourcesWithTrigger = @("azureblobstorage", "eventhub")
+    if ($WorkflowConfig.dataSource.type.ToLower() -in $dataSourcesWithTrigger) {
+        return "datasource"
+    }
+
+    return $WorkflowConfig.trigger.type
+}
+
+function Set-Trigger {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow definition object.")]
+        [object] $Definition
+    )
+
+    $triggerType = Get-TriggerType -WorkflowConfig $WorkflowConfig
+    $triggerParams = $WorkflowConfig.trigger.parameters
+
+    if ($null -ne $triggerParams) {
+        $validFrequencies = @("Second", "Minute", "Hour", "Day", "Week", "Month")
+        if ($triggerParams.frequency -notin $validFrequencies) {
+            throw "The frequency, $($triggerParams.frequency), is not valid. Please choose from: $validFrequencies"
+        }
+    }
+
+    switch ($triggerType.ToLower()) {
+        "scheduled" {
+            if ($null -eq $triggerParams) {
+                throw "Trigger parameters are required for the scheduled trigger type."
+            }
+
+            $Definition.triggers = @{
+                Recurrence = @{
+                    type       = "Recurrence"
+                    recurrence = $triggerParams
+                }
+            }
+            break
+        }
+        "datasource" {
+            if ($null -eq $triggerParams) {
+                throw "Trigger parameters are required for the data source type, $($WorkflowConfig.dataSource.type)."
+            }
+
+            $propertyName = $Definition.triggers | Get-Member -MemberType NoteProperty | Select-Object -First 1 -ExpandProperty Name
+            $Definition.triggers.$propertyName.recurrence = $triggerParams
+            break
+        }
+        "manual" {
+            # Default trigger, do nothing
+            break
+        }
+        default {
+            throw "The trigger type, $triggerType, is not valid. Please choose from: Manual, Scheduled."
+        }
+    }
 }
 
 Export-ModuleMember -Function New-DataSourceWorkflow

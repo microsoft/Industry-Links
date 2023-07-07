@@ -5,7 +5,7 @@
   "workflowType": "Flow",
 
   "trigger": {
-    "type": "Scheduled",
+    "type": "{Manual/Scheduled}",
     "parameters": {
       "interval": "1",
       "frequency": "{Second/Minute/Hour/Day/Week/Month}"
@@ -13,24 +13,33 @@
   },
 
   "dataSource": {
+    // Any of: AzureBlobStorage, CustomConnector
     "type": "AzureBlobStorage",
     "name": "GetDataFromAzureBlobStorage",
 
     // Parameters required by the data source.
-    // For example, Azure Blob Storage requires the storage
-    // account (dataset) and container (folderId) to check
-    // for data files.
     "parameters": {
+      // Azure Blob Storage requires the storage
+      // account (dataset) and container (folderId)
+      // to check for data files.
       "dataset": "mystorageaccount",
       "folderId": "mycontainer",
-      "maxFileCount": 100
+      "maxFileCount": 100,
+
+      // Event Hubs requires the event hub name,
+      // consumer group, content type and maximum
+      // events count.
+      "eventHubName": "myeventhub",
+      "contentType": "application/json",
+      "consumerGroupName": "$Default",
+      "maximumEventsCount": 50
     },
 
     ///--- CUSTOM CONNECTORS ONLY ---///
     "isCertified": false,
     "connection": {
-      "connectorId": "",  // required for non-certified custom connectors only
-      "apiName": "",      // required for certified custom connectors only
+      "connectorId": "", // required for non-certified custom connectors only
+      "apiName": "", // required for certified custom connectors only
       "operationId": ""
     }
   },

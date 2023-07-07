@@ -51,7 +51,7 @@
         "host": {
           "triggerName": "manual",
           "workflow": {
-            "id": "[resourceId('Microsoft.Logic/workflows', 'ingestData')]"
+            "id": "[resourceId('Microsoft.Logic/workflows', 'ContosoIndustryLink_Sink'))]"
           }
         },
         "body": {

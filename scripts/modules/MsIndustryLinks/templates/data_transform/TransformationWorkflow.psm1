@@ -46,31 +46,30 @@ function New-TransformWorkflow {
         throw "No data transform type was specified. Please choose from: csv_to_json."
     }
 
-    if ($null -eq $workflowConfig.dataTransform.name -or "" -eq $workflowConfig.dataTransform.name) {
-        throw "No transform workflow name was specified. Please specify a name."
-    }
-
     $transformType = $workflowConfig.dataTransform.type.ToLower()
     $validTransforms = @("csv_to_json")
     if ($transformType -notin $validTransforms) {
         throw "The data transform type, $($workflowConfig.dataTransform.type), is not supported. Please choose from: $($validTransforms -join ', ')."
     }
 
-    $workflowName = $workflowConfig.dataTransform.name
     $transformTemplate = Get-Content $PSScriptRoot/templates/data_transform/$($workflowType)_$transformType.json | ConvertFrom-Json
     $template = Get-Content $PSScriptRoot/templates/$($workflowType)_base.json | ConvertFrom-Json
 
     $templateGuid = ""
     if ($workflowType -eq "logicapp") {
         $template.definition = $transformTemplate
-        $templateName = $workflowName
+        $templateName = "$($workflowConfig.name)_Transform"
     }
     elseif ($workflowType -eq "flow") {
+        if ($null -eq $workflowConfig.dataTransform.name -or "" -eq $workflowConfig.dataTransform.name) {
+            throw "No transform workflow name was specified. Please specify a name."
+        }
+
         $templateGuid = [guid]::NewGuid().ToString()
 
         $template.properties.definition = $transformTemplate
         $template.name = $templateGuid
-        $template.properties.displayName = $workflowName
+        $template.properties.displayName = $workflowConfig.dataTransform.name
 
         $templateName = $template.properties.displayName
     }

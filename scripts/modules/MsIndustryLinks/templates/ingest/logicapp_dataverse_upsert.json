@@ -27,7 +27,7 @@
     "manual": {
       "inputs": {
         "schema": {
-          "items": {
+          "payload": {
             "type": "object"
           },
           "type": "array"
@@ -70,7 +70,7 @@
           "type": "ApiConnection"
         }
       },
-      "foreach": "@array(triggerBody()['items'])",
+      "foreach": "@array(triggerBody()['payload'])",
       "runAfter": {},
       "type": "Foreach"
     },

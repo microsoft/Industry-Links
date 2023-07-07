@@ -47,22 +47,11 @@ Please refer to the [Create a solution publisher](https://learn.microsoft.com/en
 
 ### Generate Industry Link
 
-#### Example 1: Generate an Industry Link package with a certified custom connector as the data source
+#### Example 1: Generate a Flow Industry Link package
 
 ```powershell
 New-MsIndustryLink
-    -BaseTemplate Flow
-    -WorkflowConfigFile workflow.json
-    -OutputDirectory output
-    -PackageParametersFile package.parameters.json
-```
-
-#### Example 2: Generate an Industry Link package with Azure Blob Storage as the data source
-
-```powershell
-New-MsIndustryLink
-    -BaseTemplate Flow
-    -WorkflowConfigFile workflow.json
+    -WorkflowConfigFile flow_workflow.json
     -OutputDirectory output
     -PackageParametersFile package.parameters.json
 ```

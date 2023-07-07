@@ -6,15 +6,17 @@
     "$connections": {
       "defaultValue": {},
       "type": "Object"
+    },
+    "custom_connector_parameters": {
+      "defaultValue": {},
+      "type": "Object"
     }
   },
   "triggers": {
-    "Recurrence": {
-      "recurrence": {
-        "interval": 1,
-        "frequency": "Minute"
-      },
-      "type": "Recurrence"
+    "manual": {
+      "inputs": {},
+      "kind": "Http",
+      "type": "Request"
     }
   },
   "actions": {
@@ -40,7 +42,7 @@
         "host": {
           "triggerName": "manual",
           "workflow": {
-            "id": "[resourceId('Microsoft.Logic/workflows', 'ingestData')]"
+            "id": "[resourceId('Microsoft.Logic/workflows', 'ContosoIndustryLink_Sink')]"
           }
         },
         "body": {
