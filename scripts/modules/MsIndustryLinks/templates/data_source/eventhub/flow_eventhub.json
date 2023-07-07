@@ -44,7 +44,7 @@
           "workflowReferenceName": ""
         },
         "body": {
-          "payload": "@string(@triggerOutputs()?['body/ContentData'])"
+          "payload": "@string(triggerOutputs()?['body/ContentData'])"
         }
       }
     }

@@ -89,15 +89,21 @@ function New-FlowDataSourceWorkflow {
     $triggerType = $WorkflowConfig.trigger.type.ToLower()
 
     # Configure the data source
-    if ($dataSource -eq "customconnector") {
-        $template = New-FlowCustomConnectorDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
-    }
-    elseif ($dataSource -eq "azureblobstorage") {
-        $template = New-FlowAzureBlobStorageDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
-        $triggerType = "datasource"
-    }
-    else {
-        throw "The data source, $($WorkflowConfig.dataSource.type), is not supported. Please choose from: AzureBlobStorage, CustomConnector."
+    switch ($dataSource) {
+        "azureblobstorage" {
+            $template = New-FlowAzureBlobStorageDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
+            $triggerType = "datasource"
+        }
+        "customconnector" {
+            $template = New-FlowCustomConnectorDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
+        }
+        "eventhub" {
+            $template = New-FlowEventHubDataSourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
+            $triggerType = "datasource"
+        }
+        default {
+            throw "The data source, $($WorkflowConfig.dataSource.type), is not supported. Please choose from: AzureBlobStorage, CustomConnector."
+        }
     }
 
     # Set the ID and name of the workflow
@@ -238,6 +244,41 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
             }
             api           = @{
                 name = "shared_azureblob"
+            }
+        }
+    }
+
+    return $baseTemplate
+}
+
+function New-FlowEventHubDataSourceWorkflow {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The mapping of workflow templates to GUIDs.")]
+        [hashtable] $WorkflowGuids
+    )
+
+    $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/data_source/eventhub/flow_eventhub.json | ConvertFrom-Json
+    $dataSourceConfig = $WorkflowConfig.dataSource
+
+    $definition.triggers.When_events_are_available_in_Event_Hub.recurrence = $WorkflowConfig.trigger.parameters
+    $definition.triggers.When_events_are_available_in_Event_Hub.inputs.parameters = $dataSourceConfig.parameters
+
+    # Update data ingestion sub-workflow configuration
+    $dataSinkWorkflowGuid = $WorkflowGuids[$WorkflowConfig.dataSink.name]
+    $definition.actions.Ingest_data_subflow.inputs.host.workflowReferenceName = $dataSinkWorkflowGuid
+
+    $baseTemplate.properties.definition = $definition
+    $baseTemplate.properties.connectionReferences = @{
+        shared_eventhubs = @{
+            runtimeSource = "embedded"
+            connection    = @{
+                connectionReferenceLogicalName = "shared_eventhubs_ref"
+            }
+            api           = @{
+                name = "shared_eventhubs"
             }
         }
     }
