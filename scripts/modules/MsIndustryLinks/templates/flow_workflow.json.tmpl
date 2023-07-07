@@ -69,7 +69,7 @@
 
     // Parameters required by the data sink.
     // This can include parameters to a custom
-    // connector data sink.
+    // connector data sink with an array as input.
     "parameters": {
 
       ///--- DATAVERSE ONLY ---///
@@ -96,12 +96,14 @@
     },
     "mapping": {
       ///--- CUSTOM CONNECTORS ONLY ---///
-      // remap the input data into the format required by the API
+      // Remap the input data into the format required by the API.
+      // Example: Custom connector accepting a single object as input
+      "body/customer_id": "@items('For_each_item')?['contoso_customerid']",
+      "body/timestamp": "@items('For_each_item')?['contoso_timestamp']"
+
+      // Example: Custom connector accepting an array of objects as input
       "customer_id": "@item()?['contoso_customerid']",
-      "merchant_name": "@item()?['contoso_merchantname']",
       "timestamp": "@item()?['contoso_timestamp']",
-      "amount": "@item()?['contoso_amount']",
-      "merchant_type": "@item()?['contoso_merchanttype']"
 
       ///--- DATAVERSE ONLY ---///
       // set record's GUID. Leave out to autogenerate GUID.
@@ -117,6 +119,7 @@
 
     ///--- CUSTOM CONNECTORS ONLY ---///
     "isCertified": false,
+    "inputType": "", // custom connector parameter input type. Options: Array, Object
     "connection": {
       "connectorId": "",  // required for non-certified custom connectors only
       "apiName": "",      // required for certified custom connectors only

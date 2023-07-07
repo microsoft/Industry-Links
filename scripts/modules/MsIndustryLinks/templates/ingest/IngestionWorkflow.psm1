@@ -142,12 +142,9 @@ function New-FlowCustomConnectorIngestionWorkflow {
     $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
     $definition = Get-Content $PSScriptRoot/templates/ingest/customconnector/flow_customconnector.json | ConvertFrom-Json
 
-    # Map the input data to the format of the custom connector API
-    $definition.actions.Map_data.inputs.select = $DataSinkConfig.mapping
-
     # Set variables based on whether the custom connector has been certified
     if ($DataSinkConfig.isCertified) {
-        $definition.actions.Ingest_records.inputs.host.apiId = "/providers/Microsoft.PowerApps/apis/$($DataSinkConfig.connection.apiName)"
+        $apiId = "/providers/Microsoft.PowerApps/apis/$($DataSinkConfig.connection.apiName)"
 
         $apiConfig = @{
             name = $DataSinkConfig.connection.apiName
@@ -160,22 +157,52 @@ function New-FlowCustomConnectorIngestionWorkflow {
             throw "The authentication configuration file (-AuthConfigFile) is required for uncertified custom connectors."
         }
 
+        $apiId = ""
+
         $authConfig = Get-Content $AuthConfigFile | ConvertFrom-Json
         $connectorIdentifiers = Get-ConnectorIdentifiers -ConnectorId $DataSinkConfig.connection.connectorId -AuthConfig $authConfig
 
         $apiConfig = $connectorIdentifiers
-
         $connectionReferenceName = "$($connectorIdentifiers.logicalName)_ref"
     }
 
-    # Update the connector operation ID
-    $definition.actions.Ingest_records.inputs.host.operationId = $DataSinkConfig.connection.operationId
+    $inputType = $DataSinkConfig.inputType.ToLower()
+    # Configure the flow based on whether the custom connector accepts a single record or an array of records
+    if ($inputType -eq "array") {
+        # Parameters are required to pass the data into the custom connector
+        $parameters = $DataSinkConfig.parameters
+        if ($null -eq $parameters -or 0 -eq @($parameters.psobject.Properties).Count) {
+            throw "No parameters were specified for the custom connector data sink."
+        }
 
-    # Parameters are required to pass the data into the custom connector
-    if ($null -eq $DataSinkConfig.parameters -or 0 -eq @($DataSinkConfig.parameters.psobject.Properties).Count) {
-        throw "No parameters were specified for the custom connector data sink."
+        # Remove the functionality for a custom connector to ingest a single record
+        $definition.actions.PSObject.Properties.Remove("For_each_item")
+
+        # Map the input data to the format of the custom connector API
+        $definition.actions.Map_data.inputs.select = $DataSinkConfig.mapping
+
+        $definition.actions.Ingest_records.inputs.host.operationId = $DataSinkConfig.connection.operationId
+        $definition.actions.Ingest_records.inputs.host.apiId = $apiId
+        $definition.actions.Ingest_records.inputs.parameters = $parameters
+
+        # Update the runAfter property of the Flow output action
+        $definition.actions.Flow_output.runAfter = @{Ingest_records = @("Succeeded") }
     }
-    $definition.actions.Ingest_records.inputs.parameters = $DataSinkConfig.parameters
+    elseif ($inputType -eq "object") {
+        # Remove the functionality for a custom connector to ingest an array of records
+        $definition.actions.PSObject.Properties.Remove("Map_data")
+        $definition.actions.PSObject.Properties.Remove("Ingest_records")
+
+        $definition.actions.For_each_item.actions.Ingest_record.inputs.host.operationId = $DataSinkConfig.connection.operationId
+        $definition.actions.For_each_item.actions.Ingest_record.inputs.host.apiId = $apiId
+        $definition.actions.For_each_item.actions.Ingest_record.inputs.parameters = $DataSinkConfig.mapping
+
+        # Update the runAfter property of the Flow output action
+        $definition.actions.Flow_output.runAfter = @{For_each_item = @("Succeeded") }
+    }
+    else {
+        throw "The input type, $inputType, is not supported. Please choose from: Array, Object."
+    }
 
     $baseTemplate.properties.definition = $definition
     $baseTemplate.properties.connectionReferences = @{

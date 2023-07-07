@@ -55,10 +55,27 @@
           "authentication": "@parameters('$authentication')"
         }
       },
-      "Flow_output": {
-        "runAfter": {
-          "Ingest_records": ["Succeeded"]
+      "For_each_item": {
+        "foreach": "@array(json(triggerBody()['payload']))",
+        "actions": {
+          "Ingest_record": {
+            "type": "OpenApiConnection",
+            "inputs": {
+              "host": {
+                "connectionName": "customconnector",
+                "operationId": "",
+                "apiId": ""
+              },
+              "parameters": {},
+              "authentication": "@parameters('$authentication')"
+            }
+          }
         },
+        "runAfter": {},
+        "type": "Foreach"
+      },
+      "Flow_output": {
+        "runAfter": {},
         "type": "Response",
         "kind": "PowerApp",
         "inputs": {
