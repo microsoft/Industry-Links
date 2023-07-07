@@ -279,30 +279,12 @@ function New-LogicAppDataSourceWorkflow {
     # Set the custom connector properties if data source is CustomConnector
     $definition = Get-Content $PSScriptRoot/templates/data_source/$dataSourceType/logicapp_$dataSourceType.json | ConvertFrom-Json
     if ($isCustomConnector) {
-        $method = $WorkflowConfig.dataSource.properties.method.ToLower()
-        $definition.actions.Retrieve_data_using_custom_connector.inputs.host.connection.name = "@parameters('`$connections')['$apiName']['connectionId']"
-        $definition.actions.Retrieve_data_using_custom_connector.inputs.method = $method
-        $definition.actions.Retrieve_data_using_custom_connector.inputs.path = $WorkflowConfig.dataSource.properties.path
-
-        if ($null -ne $WorkflowConfig.dataSource.properties.queries) {
-            $definition.actions.Retrieve_data_using_custom_connector.inputs | Add-Member -MemberType NoteProperty -Name "queries" -Value $WorkflowConfig.dataSource.properties.queries
-        }
-        $bodyMethods = @("post", "put", "patch")
-        if ($null -ne $WorkflowConfig.dataSource.properties.body -and $method -in $bodyMethods) {
-            $definition.actions.Retrieve_data_using_custom_connector.inputs | Add-Member -MemberType NoteProperty -Name "body" -Value $WorkflowConfig.dataSource.properties.body
-        }
+        Set-LogicAppCustomConnectorConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
     }
 
     # Add data transform action if defined in the workflow configuration
     if ($null -ne $WorkflowConfig.dataTransform.type) {
-        $ingestDataSubflow = $definition.actions.Ingest_data_subflow
-        $dataTransformSubflow = Get-TransformDataSubflow -WorkflowName $WorkflowConfig.name -Text $ingestDataSubflow.inputs.body.payload -RunAfter $ingestDataSubflow.runAfter
-        $definition.actions | Add-Member -MemberType NoteProperty -Name "Transform_data_subflow" -Value $dataTransformSubflow
-
-        $definition.actions.Ingest_data_subflow.inputs.body.payload = "@body('Transform_data_subflow')"
-        $definition.actions.Ingest_data_subflow.runAfter = @{
-            Transform_data_subflow = @("Succeeded")
-        }
+        Set-LogicAppTransformConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
     }
 
     # Set the data sink workflow ID
@@ -454,6 +436,47 @@ function Get-TransformDataSubflow {
         }
         runAfter = $RunAfter
         type     = "Workflow"
+    }
+}
+
+function Set-LogicAppCustomConnectorConfiguration {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow definition object.")]
+        [object] $Definition
+    )
+
+    $apiName = $WorkflowConfig.dataSource.properties.name
+    $method = $WorkflowConfig.dataSource.properties.method.ToLower()
+    $Definition.actions.Retrieve_data_using_custom_connector.inputs.host.connection.name = "@parameters('`$connections')['$apiName']['connectionId']"
+    $Definition.actions.Retrieve_data_using_custom_connector.inputs.method = $method
+    $Definition.actions.Retrieve_data_using_custom_connector.inputs.path = $WorkflowConfig.dataSource.properties.path
+
+    if ($null -ne $WorkflowConfig.dataSource.properties.queries) {
+        $Definition.actions.Retrieve_data_using_custom_connector.inputs | Add-Member -MemberType NoteProperty -Name "queries" -Value $WorkflowConfig.dataSource.properties.queries
+    }
+    $bodyMethods = @("post", "put", "patch")
+    if ($null -ne $WorkflowConfig.dataSource.properties.body -and $method -in $bodyMethods) {
+        $Definition.actions.Retrieve_data_using_custom_connector.inputs | Add-Member -MemberType NoteProperty -Name "body" -Value $WorkflowConfig.dataSource.properties.body
+    }
+}
+
+function Set-LogicAppTransformConfiguration {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow definition object.")]
+        [object] $Definition
+    )
+
+    $ingestDataSubflow = $Definition.actions.Ingest_data_subflow
+    $dataTransformSubflow = Get-TransformDataSubflow -WorkflowName $WorkflowConfig.name -Text $ingestDataSubflow.inputs.body.payload -RunAfter $ingestDataSubflow.runAfter
+    $Definition.actions | Add-Member -MemberType NoteProperty -Name "Transform_data_subflow" -Value $dataTransformSubflow
+
+    $Definition.actions.Ingest_data_subflow.inputs.body.payload = "@body('Transform_data_subflow')"
+    $Definition.actions.Ingest_data_subflow.runAfter = @{
+        Transform_data_subflow = @("Succeeded")
     }
 }
 
