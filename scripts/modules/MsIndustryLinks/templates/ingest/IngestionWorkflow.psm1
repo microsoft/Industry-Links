@@ -115,14 +115,16 @@ function New-FlowIngestionWorkflow {
     $dataSink = $DataSinkConfig.type.ToLower()
 
     # Configure the data sink
-    if ($dataSink -eq "dataverse") {
-        $template = New-FlowDataverseIngestionWorkflow -DataSinkConfig $DataSinkConfig
-    }
-    elseif ($dataSink -eq "customconnector") {
-        $template = New-FlowCustomConnectorIngestionWorkflow -DataSinkConfig $DataSinkConfig -AuthConfigFile $AuthConfigFile
-    }
-    else {
-        throw "The data sink type, $($DataSinkConfig.type), is not supported. Please choose from: CustomConnector, Dataverse."
+    switch ($dataSink) {
+        "customconnector" {
+            $template = New-FlowCustomConnectorIngestionWorkflow -DataSinkConfig $DataSinkConfig -AuthConfigFile $AuthConfigFile
+        }
+        "dataverse" {
+            $template = New-FlowDataverseIngestionWorkflow -DataSinkConfig $DataSinkConfig
+        }
+        default {
+            throw "The data sink type, $($DataSinkConfig.type), is not supported. Please choose from: CustomConnector, Dataverse."
+        }
     }
 
     $template.name = [guid]::NewGuid().ToString()
