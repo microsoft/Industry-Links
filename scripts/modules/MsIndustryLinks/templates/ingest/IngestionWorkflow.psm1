@@ -97,7 +97,7 @@ function New-LogicAppIngestionWorkflow {
         }
     }
     $DataSinkConfig.parameters | Add-Member -NotePropertyName '$connections' -NotePropertyValue $dataSinkConnections
-    $DataSinkConfig.parameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]"}
+    $DataSinkConfig.parameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
     $baseTemplate.parameters = $DataSinkConfig.parameters
     $baseTemplate.definition = $definition
 
@@ -169,41 +169,54 @@ function New-FlowCustomConnectorIngestionWorkflow {
     }
 
     $inputType = $DataSinkConfig.inputType.ToLower()
+
+    $definition.actions.Ingest_records.inputs.host.operationId = $DataSinkConfig.connection.operationId
+    $definition.actions.Ingest_records.inputs.host.apiId = $apiId
+
     # Configure the flow based on whether the custom connector accepts a single record or an array of records
-    if ($inputType -eq "array") {
-        # Parameters are required to pass the data into the custom connector
-        $parameters = $DataSinkConfig.parameters
-        if ($null -eq $parameters -or 0 -eq @($parameters.psobject.Properties).Count) {
-            throw "No parameters were specified for the custom connector data sink."
+    switch ($inputType) {
+        "array" {
+            # Parameters are required to pass the data into the custom connector
+            $parameters = $DataSinkConfig.parameters
+            if ($null -eq $parameters -or 0 -eq @($parameters.psobject.Properties).Count) {
+                throw "No parameters were specified for the custom connector data sink."
+            }
+
+            # Map the input data to the format of the custom connector API
+            $definition.actions.Map_data.inputs.select = $DataSinkConfig.mapping
+
+            # The parameters are stored in the configuration file to ensure the input attribute is correctly set
+            $definition.actions.Ingest_records.inputs.parameters = $parameters
+
+            # Update the runAfter properties
+            $definition.actions.Ingest_records.runAfter = @{Map_data = @("Succeeded") }
+            $definition.actions.Flow_output.runAfter = @{Ingest_records = @("Succeeded") }
         }
+        "object" {
+            # Set the input parameters to the sink mapping. This ensures the input object attributes are set to what the API is expecting.
+            $definition.actions.Ingest_records.inputs.parameters = $DataSinkConfig.mapping
 
-        # Remove the functionality for a custom connector to ingest a single record
-        $definition.actions.PSObject.Properties.Remove("For_each_item")
+            # Create new action to iterate over the records and ingest them one at a time
+            $forEachAction = @{
+                foreach  = "@array(json(triggerBody()['payload']))"
+                actions  = @{ Ingest_record = $definition.actions.Ingest_records }
+                runAfter = @{}
+                type     = "Foreach"
+            }
 
-        # Map the input data to the format of the custom connector API
-        $definition.actions.Map_data.inputs.select = $DataSinkConfig.mapping
+            # Add the new action to the workflow
+            $definition.actions | Add-Member -NotePropertyName "For_each_item" -NotePropertyValue $forEachAction
 
-        $definition.actions.Ingest_records.inputs.host.operationId = $DataSinkConfig.connection.operationId
-        $definition.actions.Ingest_records.inputs.host.apiId = $apiId
-        $definition.actions.Ingest_records.inputs.parameters = $parameters
+            # Remove the unused actions to ingest an array of records
+            $definition.actions.PSObject.Properties.Remove("Map_data")
+            $definition.actions.PSObject.Properties.Remove("Ingest_records")
 
-        # Update the runAfter property of the Flow output action
-        $definition.actions.Flow_output.runAfter = @{Ingest_records = @("Succeeded") }
-    }
-    elseif ($inputType -eq "object") {
-        # Remove the functionality for a custom connector to ingest an array of records
-        $definition.actions.PSObject.Properties.Remove("Map_data")
-        $definition.actions.PSObject.Properties.Remove("Ingest_records")
-
-        $definition.actions.For_each_item.actions.Ingest_record.inputs.host.operationId = $DataSinkConfig.connection.operationId
-        $definition.actions.For_each_item.actions.Ingest_record.inputs.host.apiId = $apiId
-        $definition.actions.For_each_item.actions.Ingest_record.inputs.parameters = $DataSinkConfig.mapping
-
-        # Update the runAfter property of the Flow output action
-        $definition.actions.Flow_output.runAfter = @{For_each_item = @("Succeeded") }
-    }
-    else {
-        throw "The input type, $inputType, is not supported. Please choose from: Array, Object."
+            # Update the runAfter property of the Flow output action
+            $definition.actions.Flow_output.runAfter = @{For_each_item = @("Succeeded") }
+        }
+        default {
+            throw "The input type, $($DataSinkConfig.inputType), is not supported. Please choose from: Array, Object."
+        }
     }
 
     $baseTemplate.properties.definition = $definition

@@ -23,7 +23,7 @@
                 "title": "Payload",
                 "type": "string",
                 "x-ms-dynamically-added": true,
-                "description": "The array of items to ingest into Dataverse.",
+                "description": "The array of items to ingest into the custom connector.",
                 "x-ms-content-hint": "TEXT"
               }
             },
@@ -41,9 +41,7 @@
         }
       },
       "Ingest_records": {
-        "runAfter": {
-          "Map_data": ["Succeeded"]
-        },
+        "runAfter": {},
         "type": "OpenApiConnection",
         "inputs": {
           "host": {
@@ -54,25 +52,6 @@
           "parameters": {},
           "authentication": "@parameters('$authentication')"
         }
-      },
-      "For_each_item": {
-        "foreach": "@array(json(triggerBody()['payload']))",
-        "actions": {
-          "Ingest_record": {
-            "type": "OpenApiConnection",
-            "inputs": {
-              "host": {
-                "connectionName": "customconnector",
-                "operationId": "",
-                "apiId": ""
-              },
-              "parameters": {},
-              "authentication": "@parameters('$authentication')"
-            }
-          }
-        },
-        "runAfter": {},
-        "type": "Foreach"
       },
       "Flow_output": {
         "runAfter": {},
