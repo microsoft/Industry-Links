@@ -10,6 +10,7 @@ Generates an ingestion workflow template. Supports Logic Apps and Power Automate
 New-IngestionWorkflow
     -WorkflowConfigFile <String>
     -OutputDirectory <String>
+    [-AuthConfigFile] <String>
 ```
 
 ## Description
