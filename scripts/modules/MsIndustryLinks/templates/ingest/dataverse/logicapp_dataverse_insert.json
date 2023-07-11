@@ -7,7 +7,7 @@
       "type": "Object"
     },
     "organization_url": {
-      "defaultValue": "",
+      "defaultValue": "[parameters('organizationUrl')]",
       "type": "String"
     },
     "plural_table_name": {

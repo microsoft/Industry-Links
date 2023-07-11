@@ -355,9 +355,10 @@ function New-LogicAppDataSourceWorkflow {
     $dataSourceConnections = @{
         value = @{
             $apiName = @{
-                connectionId   = "[resourceId('Microsoft.Web/connections', '$apiName')]"
-                connectionName = $apiName
-                id             = $apiId
+                connectionId         = "[resourceId('Microsoft.Web/connections', '$apiName')]"
+                connectionName       = $apiName
+                connectionProperties = Get-ConnectionProperties -DataSourceType $dataSourceType
+                id                   = $apiId
             }
         }
     }
@@ -522,7 +523,26 @@ function Get-LogicAppApiId {
     if ($dataSource -eq "customconnector" -and !($IsCustomConnectorCertified)) {
         return "[resourceId('Microsoft.Web/customApis', '$ApiName')]"
     }
-    return "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, '$apiName')]"
+    return "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), '$apiName')]"
+}
+
+function Get-ConnectionProperties {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The data source type.")]
+        [string] $DataSourceType
+    )
+
+    $managedIdentitySources = @("azureblobstorage", "eventhub")
+    if ($DataSourceType.ToLower() -in $managedIdentitySources) {
+        return @{
+            authentication = @{
+                identity = "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')))]"
+                type     = "ManagedServiceIdentity"
+            }
+        }
+    }
+
+    return @{}
 }
 
 function Get-TransformDataSubflow {
