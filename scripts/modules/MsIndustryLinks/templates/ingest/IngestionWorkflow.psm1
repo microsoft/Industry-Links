@@ -90,7 +90,7 @@ function New-LogicAppIngestionWorkflow {
         "customconnector" {
             $apiName = $DataSinkConfig.properties.name
             $apiId = Get-LogicAppApiId -DataSourceType $dataSinkType -ApiName $apiName -IsCustomConnectorCertified $DataSinkConfig.isCertified
-            Set-LogicAppCustomConnectorDataSinkConfiguration -DataSinkConfig $DataSinkConfig -Definition $definition | Out-Null
+            Set-LogicAppCustomConnectorDataSinkConfiguration -DataSinkConfig $DataSinkConfig -Definition $definition
         }
         "dataverse" {
             $apiName = Get-ApiName -DataSourceType $dataSinkType
@@ -111,8 +111,14 @@ function New-LogicAppIngestionWorkflow {
             }
         }
     }
-    $DataSinkConfig.parameters | Add-Member -NotePropertyName '$connections' -NotePropertyValue $dataSinkConnections
-    $baseTemplate.parameters = $DataSinkConfig.parameters
+
+    if ($null -eq $DataSinkConfig.parameters) {
+        $baseTemplate.parameters | Add-Member -NotePropertyName '$connections' -NotePropertyValue $dataSinkConnections
+    }
+    else {
+        $DataSinkConfig.parameters | Add-Member -NotePropertyName '$connections' -NotePropertyValue $dataSinkConnections
+        $baseTemplate.parameters = $DataSinkConfig.parameters
+    }
     $baseTemplate.definition = $definition
 
     return $baseTemplate
@@ -141,7 +147,6 @@ function Set-LogicAppCustomConnectorDataSinkConfiguration {
         "array" {
             # Map the data in the select action
             $Definition.actions.Map_data.inputs.select = $DataSinkConfig.mapping
-
         }
         "object" {
             # Set the data mapping to the body of the ingest action
@@ -150,23 +155,22 @@ function Set-LogicAppCustomConnectorDataSinkConfiguration {
             # Create new action to iterate over the records and ingest them one at a time
             $forEachAction = @{
                 foreach  = "@array(triggerBody()['payload'])"
-                actions  = @{ Ingest_record = $definition.actions.Ingest_records }
+                actions  = @{ Ingest_record = $Definition.actions.Ingest_records }
                 runAfter = @{}
                 type     = "Foreach"
             }
 
             # Add the new action to the workflow
-            $definition.actions | Add-Member -NotePropertyName "For_each_item" -NotePropertyValue $forEachAction
+            $Definition.actions | Add-Member -NotePropertyName "For_each_item" -NotePropertyValue $forEachAction
 
             # Remove the unused actions to ingest an array of records
-            $definition.actions.PSObject.Properties.Remove("Map_data")
-            $definition.actions.PSObject.Properties.Remove("Ingest_records")
+            $Definition.actions.PSObject.Properties.Remove("Map_data")
+            $Definition.actions.PSObject.Properties.Remove("Ingest_records")
 
             # Update the response runAfter actions
             $Definition.actions.For_each_item.actions.Ingest_record.runAfter = @{}
             $Definition.actions.Response.runAfter = @{For_each_item = @("Succeeded") }
             $Definition.actions.Failure_response.runAfter = @{For_each_item = @("TimedOut", "Failed") }
-
         }
         default {
             throw "The data sink input type, $($DataSinkConfig.inputType), is not supported. Please choose from: Array, Object."
