@@ -341,11 +341,14 @@ function New-LogicAppDataSourceWorkflow {
 
     # Set the workflow parameters for the data source
     $dataSourceParameters = $WorkflowConfig.dataSource.parameters
+
     if ($isCustomConnector) {
         $apiName = $WorkflowConfig.dataSource.properties.name
+        $apiId = Get-LogicAppApiId -DataSourceType $dataSourceType -ApiName $apiName -IsCustomConnectorCertified $WorkflowConfig.dataSource.isCertified
     }
     else {
         $apiName = Get-ApiName -DataSourceType $dataSourceType
+        $apiId = Get-LogicAppApiId -DataSourceType $dataSourceType -ApiName $apiName
         $dataSourceParameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
     }
 
@@ -354,7 +357,7 @@ function New-LogicAppDataSourceWorkflow {
             $apiName = @{
                 connectionId   = "[resourceId('Microsoft.Web/connections', '$apiName')]"
                 connectionName = $apiName
-                id             = "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, '$apiName')]"
+                id             = $apiId
             }
         }
     }
@@ -503,6 +506,23 @@ function Get-ApiName {
             throw "The connection type, $DataSourceType, is not supported."
         }
     }
+}
+
+function Get-LogicAppApiId {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The data source type.")]
+        [string] $DataSourceType,
+        [Parameter(Mandatory = $true, HelpMessage = "The API name.")]
+        [string] $ApiName,
+        [Parameter(Mandatory = $false, HelpMessage = "If the data source is a custom connector, is it certified.")]
+        [bool] $IsCustomConnectorCertified
+    )
+
+    $dataSource = $DataSourceType.ToLower()
+    if ($dataSource -eq "customconnector" -and !($IsCustomConnectorCertified)) {
+        return "[resourceId('Microsoft.Web/customApis', '$ApiName')]"
+    }
+    return "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, '$apiName')]"
 }
 
 function Get-TransformDataSubflow {

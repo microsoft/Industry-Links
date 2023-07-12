@@ -89,10 +89,13 @@ function New-LogicAppIngestionWorkflow {
     switch ($dataSinkType) {
         "customconnector" {
             $apiName = $DataSinkConfig.properties.name
+            $apiId = Get-LogicAppApiId -DataSourceType $dataSinkType -ApiName $apiName -IsCustomConnectorCertified $DataSinkConfig.isCertified
+
             Set-LogicAppCustomConnectorDataSinkConfiguration -DataSinkConfig $DataSinkConfig -Definition $definition | Out-Null
         }
         "dataverse" {
             $apiName = Get-ApiName -DataSourceType $dataSinkType
+            $apiId = Get-LogicAppApiId -DataSourceType $dataSinkType -ApiName $apiName
 
             $DataSinkConfig.parameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
 
@@ -108,7 +111,7 @@ function New-LogicAppIngestionWorkflow {
             $apiName = @{
                 connectionId   = "[resourceId('Microsoft.Web/connections', '$apiName')]"
                 connectionName = $apiName
-                id             = "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, '$apiName')]"
+                id             = $apiId
             }
         }
     }
