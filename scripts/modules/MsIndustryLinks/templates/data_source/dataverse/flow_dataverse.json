@@ -57,7 +57,7 @@
                     "workflowReferenceName": ""
                 },
                 "body": {
-                    "payload": "@string(outputs('Retrieve_data_from_Dataverse')?['body'])"
+                    "payload": "@string(outputs('Retrieve_data_from_Dataverse')?['body'].value)"
                 }
             }
         }
