@@ -1,0 +1,68 @@
+{
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "$connections": {
+        "defaultValue": {},
+        "type": "Object"
+      }
+    },
+    "triggers": {
+      "manual": {
+        "inputs": {
+          "schema": {
+            "payload": {
+              "type": "array"
+            },
+            "type": "object"
+          }
+        },
+        "kind": "Http",
+        "type": "Request"
+      }
+    },
+    "actions": {
+      "Map_data": {
+        "type": "Select",
+        "inputs": {
+          "from": "@array(triggerBody()['payload'])",
+          "select": {}
+        }
+      },
+      "Ingest_records": {
+        "inputs": {
+          "host": {
+            "connection": {
+              "name": "@parameters('$connections')['contosoapi']['connectionId']"
+            }
+          },
+          "body": "@body('Map_data')",
+          "method": "post",
+          "path": "/transactions"
+        },
+        "runAfter": {"Map_data": ["Succeeded"]},
+        "type": "ApiConnection"
+      },
+      "Response": {
+        "inputs": {
+          "statusCode": 200
+        },
+        "kind": "Http",
+        "runAfter": {
+          "Ingest_records": ["Succeeded"]
+        },
+        "type": "Response"
+      },
+      "Failure_response": {
+        "inputs": {
+          "statusCode": 400
+        },
+        "kind": "Http",
+        "runAfter": {
+          "Ingest_records": ["TimedOut", "Failed"]
+        },
+        "type": "Response"
+      }
+    }
+  }
+  

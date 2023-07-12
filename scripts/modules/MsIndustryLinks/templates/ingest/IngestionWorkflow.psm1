@@ -80,28 +80,99 @@ function New-LogicAppIngestionWorkflow {
         [object] $DataSinkConfig
     )
 
-    $definitionFileSuffix = $(if ($DataSinkConfig.upsert) { "upsert" } else { "insert" })
+    $dataSinkType = $DataSinkConfig.type.ToLower()
 
+    $definitionFileSuffix = $(if ($dataSinkType -eq "dataverse") { if ($DataSinkConfig.upsert) { "_upsert" } else { "_insert" } } else { "" })
+    $definition = Get-Content "$PSScriptRoot/templates/ingest/$dataSinkType/logicapp_$($dataSinkType)$($definitionFileSuffix).json" | ConvertFrom-Json
     $baseTemplate = Get-Content $PSScriptRoot/templates/logicapp_base.json | ConvertFrom-Json
-    $definition = Get-Content $PSScriptRoot/templates/ingest/dataverse/logicapp_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
 
-    $definition.actions.For_each_item.actions.Ingest_record.inputs.body = $DataSinkConfig.mapping
+    switch ($dataSinkType) {
+        "customconnector" {
+            $apiName = $DataSinkConfig.properties.name
+            Set-LogicAppCustomConnectorDataSinkConfiguration -DataSinkConfig $DataSinkConfig -Definition $definition | Out-Null
+        }
+        "dataverse" {
+            $apiName = Get-ApiName -DataSourceType $dataSinkType
+
+            $DataSinkConfig.parameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
+
+            $definition.actions.For_each_item.actions.Ingest_record.inputs.body = $DataSinkConfig.mapping
+        }
+        default {
+            throw "The data sink type, $dataSinkType, is not supported. Please choose from: CustomConnector, Dataverse."
+        }
+    }
 
     $dataSinkConnections = @{
         value = @{
-            commondataservice = @{
-                connectionId   = "[resourceId('Microsoft.Web/connections', 'commondataservice')]"
-                connectionName = "commondataservice"
-                id             = "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, 'commondataservice')]"
+            $apiName = @{
+                connectionId   = "[resourceId('Microsoft.Web/connections', '$apiName')]"
+                connectionName = $apiName
+                id             = "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, '$apiName')]"
             }
         }
     }
     $DataSinkConfig.parameters | Add-Member -NotePropertyName '$connections' -NotePropertyValue $dataSinkConnections
-    $DataSinkConfig.parameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
     $baseTemplate.parameters = $DataSinkConfig.parameters
     $baseTemplate.definition = $definition
 
     return $baseTemplate
+}
+
+function Set-LogicAppCustomConnectorDataSinkConfiguration {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
+        [object] $DataSinkConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow definition object.")]
+        [object] $Definition
+    )
+
+    $apiName = $DataSinkConfig.properties.name
+    $method = $DataSinkConfig.properties.method.ToLower()
+    $Definition.actions.Ingest_records.inputs.host.connection.name = "@parameters('`$connections')['$apiName']['connectionId']"
+    $Definition.actions.Ingest_records.inputs.method = $method
+    $Definition.actions.Ingest_records.inputs.path = $DataSinkConfig.properties.path
+
+    if ($null -ne $DataSinkConfig.properties.queries) {
+        $Definition.actions.Ingest_records.inputs | Add-Member -MemberType NoteProperty -Name "queries" -Value $DataSinkConfig.properties.queries
+    }
+
+    $inputType = $DataSinkConfig.properties.inputType.ToLower()
+    switch ($inputType) {
+        "array" {
+            # Map the data in the select action
+            $Definition.actions.Map_data.inputs.select = $DataSinkConfig.mapping
+
+        }
+        "object" {
+            # Set the data mapping to the body of the ingest action
+            $Definition.actions.Ingest_records.inputs.body = $DataSinkConfig.mapping
+
+            # Create new action to iterate over the records and ingest them one at a time
+            $forEachAction = @{
+                foreach  = "@array(triggerBody()['payload'])"
+                actions  = @{ Ingest_record = $definition.actions.Ingest_records }
+                runAfter = @{}
+                type     = "Foreach"
+            }
+
+            # Add the new action to the workflow
+            $definition.actions | Add-Member -NotePropertyName "For_each_item" -NotePropertyValue $forEachAction
+
+            # Remove the unused actions to ingest an array of records
+            $definition.actions.PSObject.Properties.Remove("Map_data")
+            $definition.actions.PSObject.Properties.Remove("Ingest_records")
+
+            # Update the response runAfter actions
+            $Definition.actions.For_each_item.actions.Ingest_record.runAfter = @{}
+            $Definition.actions.Response.runAfter = @{For_each_item = @("Succeeded") }
+            $Definition.actions.Failure_response.runAfter = @{For_each_item = @("TimedOut", "Failed") }
+
+        }
+        default {
+            throw "The data sink input type, $($DataSinkConfig.inputType), is not supported. Please choose from: Array, Object."
+        }
+    }
 }
 
 function New-FlowIngestionWorkflow {
