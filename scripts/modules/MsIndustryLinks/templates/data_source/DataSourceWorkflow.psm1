@@ -340,13 +340,15 @@ function New-LogicAppDataSourceWorkflow {
     $isCustomConnector = "customconnector" -eq $dataSourceType
 
     # Set the workflow parameters for the data source
+    $dataSourceParameters = $WorkflowConfig.dataSource.parameters
     if ($isCustomConnector) {
         $apiName = $WorkflowConfig.dataSource.properties.name
     }
     else {
         $apiName = Get-ApiName -DataSourceType $dataSourceType
+        $dataSourceParameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
     }
-    $dataSourceParameters = $WorkflowConfig.dataSource.parameters
+
     $dataSourceConnections = @{
         value = @{
             $apiName = @{
@@ -356,6 +358,7 @@ function New-LogicAppDataSourceWorkflow {
             }
         }
     }
+
     $dataSourceParameters | Add-Member -MemberType NoteProperty -Name '$connections' -Value $dataSourceConnections
     $baseTemplate.parameters = $dataSourceParameters
 
@@ -363,6 +366,11 @@ function New-LogicAppDataSourceWorkflow {
     $definition = Get-Content $PSScriptRoot/templates/data_source/$dataSourceType/logicapp_$dataSourceType.json | ConvertFrom-Json
     if ($isCustomConnector) {
         Set-LogicAppCustomConnectorConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
+    }
+
+    # Set the custom connector queries if defined in the workflow configuration
+    if ($null -ne $WorkflowConfig.dataSource.queries -and !$isCustomConnector) {
+        $Definition.actions.Retrieve_data_from_Dataverse.inputs | Add-Member -MemberType NoteProperty -Name "queries" -Value $WorkflowConfig.dataSource.queries
     }
 
     # Add data transform action if defined in the workflow configuration

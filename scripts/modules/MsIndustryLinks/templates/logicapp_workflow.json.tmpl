@@ -18,10 +18,18 @@
   },
 
   "dataSource": {
-    "type": "{AzureBlobStorage/CustomConnector/EventHub}",
+    "type": "{AzureBlobStorage/CustomConnector/Dataverse/EventHub}",
 
     // Parameters required by the data source.
     "parameters": {
+
+      // Dataverse requires the plural table name
+      // (plural_table_name) to know which table to
+      // retrieve the data from.
+      "plural_table_name": {
+        "value": "contoso_transactions"
+      }
+
       // Azure Blob Storage requires the storage
       // account and container to check for data files.
       "storage_account_name": {
@@ -53,6 +61,12 @@
         }
       }
     },
+
+    // Optional Dataverse query parameter.
+    // This can be used to manipulate data
+    // coming back from Dataverse using
+    // queries such as $filter, $select, $top etc
+    "queries": {}
 
     ///--- CUSTOM CONNECTORS ONLY ---///
     "isCertified": false,
