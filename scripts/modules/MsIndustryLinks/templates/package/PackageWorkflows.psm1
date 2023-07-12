@@ -141,13 +141,17 @@ function New-FlowReferenceInSolution {
         # Iterate over all of the connection references and add them to the Customizations.xml
         $workflowTemplate.properties.connectionReferences.PSObject.Properties | ForEach-Object {
             $connectionReference = $_.Value
-            # XML AppendChild function does not add duplicate XML elements
             $connectionReferenceLogicalName = $connectionReference.connection.connectionReferenceLogicalName
-            $connectorId = "/providers/Microsoft.PowerApps/apis/$($connectionReference.api.name)"
 
-            $customConnectionElement = New-CustomizationsXmlCustomConnectorElement -CustomizationsXml $customizationsXml -ConnectionReferenceLogicalName $connectionReferenceLogicalName -ConnectionReferenceDisplayName $connectionReferenceLogicalName -ConnectorId $connectorId
-            $customConnectionsElement = $customizationsXml.SelectSingleNode("//connectionreferences")
-            $customConnectionsElement.AppendChild($customConnectionElement) | Out-Null
+            # Create a new connection reference only if it doesnt already exist
+            $connectionSearchString = "//connectionreferences[connectionreference[@connectionreferencelogicalname='$connectionReferenceLogicalName']]"
+            if (($customizationsXml.SelectNodes($connectionSearchString)).Count -eq 0) {
+                $connectorId = "/providers/Microsoft.PowerApps/apis/$($connectionReference.api.name)"
+
+                $customConnectionElement = New-CustomizationsXmlCustomConnectorElement -CustomizationsXml $customizationsXml -ConnectionReferenceLogicalName $connectionReferenceLogicalName -ConnectionReferenceDisplayName $connectionReferenceLogicalName -ConnectorId $connectorId
+                $customConnectionsElement = $customizationsXml.SelectSingleNode("//connectionreferences")
+                $customConnectionsElement.AppendChild($customConnectionElement) | Out-Null
+            }
         }
 
         $customizationsXml.Save((Convert-Path $customizationsPath))
