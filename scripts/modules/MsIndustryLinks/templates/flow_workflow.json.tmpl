@@ -17,7 +17,7 @@
   },
 
   "dataSource": {
-    "type": "{AzureBlobStorage/CustomConnector/EventHub}",
+    "type": "{AzureBlobStorage/CustomConnector/Dataverse/EventHub}",
     "name": "GetDataFromAzureBlobStorage",
 
     // Parameters required by the data source.
@@ -28,6 +28,14 @@
       "dataset": "mystorageaccount",
       "folderId": "mycontainer",
       "maxFileCount": 100,
+
+      // Dataverse requires the plural table name
+      // (entityName) to know which table to retrieve
+      // data from.
+      "entityName": "contoso_transactions",
+      "$select": "",      // optional: comma-separated list of column unique names to limit which columns are returned
+      "$filter": "",      // optional: OData style filter expression to limit which rows are returned
+      "$orderby": ""       // optional: Columns to sort by in OData orderBy style (excluding lookups)
 
       // Event Hubs requires the event hub name,
       // consumer group, content type and maximum
@@ -54,15 +62,22 @@
   },
 
   "dataSink": {
+    "type": "{CustomConnector/Dataverse}",
     "name": "IngestIntoDataverse",
-    "upsert": false,
+
+    "upsert": false, // Dataverse only
+
+    // Parameters required by the data sink.
+    // This can include parameters to a custom
+    // connector data sink with an array as input.
     "parameters": {
+
+      ///--- DATAVERSE ONLY ---///
       "plural_table_name": {
         "value": "contoso_transactions"
       },
 
-      ///--- UPSERT ONLY ---///
-
+      ///--- DATAVERSE UPSERT ONLY ---///
       // The destination table GUID column name.
       "guid_column": {
         "value": "contoso_transactionid"
@@ -80,6 +95,17 @@
       }
     },
     "mapping": {
+      ///--- CUSTOM CONNECTORS ONLY ---///
+      // Remap the input data into the format required by the API.
+      // Example: Custom connector accepting a single object as input
+      "body/customer_id": "@items('For_each_item')?['contoso_customerid']",
+      "body/timestamp": "@items('For_each_item')?['contoso_timestamp']"
+
+      // Example: Custom connector accepting an array of objects as input
+      "customer_id": "@item()?['contoso_customerid']",
+      "timestamp": "@item()?['contoso_timestamp']",
+
+      ///--- DATAVERSE ONLY ---///
       // set record's GUID. Leave out to autogenerate GUID.
       "item/contoso_transactionid": "@item()['transaction_id']",
 
@@ -89,6 +115,15 @@
       "item/contoso_timestamp": "@parseDateTime(item()['timestamp'])",
       "item/contoso_amount": "@item()['amount']",
       "item/contoso_merchanttype": "@item()['merchant_type']"
+    },
+
+    ///--- CUSTOM CONNECTORS ONLY ---///
+    "isCertified": false,
+    "inputType": "", // custom connector parameter input type. Options: Array, Object
+    "connection": {
+      "connectorId": "",  // required for non-certified custom connectors only
+      "apiName": "",      // required for certified custom connectors only
+      "operationId": ""
     }
   }
 }

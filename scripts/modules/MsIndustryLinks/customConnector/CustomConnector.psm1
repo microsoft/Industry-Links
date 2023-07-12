@@ -312,6 +312,7 @@ function Get-GenericOAuthClientCredentialsPolicyTemplates {
             }
         }
     }
+    return $policyTemplateInstances
 }
 
 function Configure-AuthenticationOptions {
@@ -369,7 +370,7 @@ function Configure-AuthenticationOptions {
 
                 $policyTemplateInstances = Get-GenericOAuthClientCredentialsPolicyTemplates -tokenUrl $apiDefintionAuth.tokenUrl -scopes $scopes
 
-                $customCodePath = "./assets/clientCredentialsAuthFlow.csx"
+                $customCodePath = "$PSScriptRoot/customConnector/assets/clientCredentialsAuthFlow.csx"
             }
         }
         Default {

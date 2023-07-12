@@ -1,0 +1,65 @@
+{
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "$connections": {
+            "defaultValue": {},
+            "type": "Object"
+        },
+        "$authentication": {
+            "defaultValue": {},
+            "type": "SecureObject"
+        }
+    },
+    "triggers": {
+        "manual": {
+            "type": "Request",
+            "kind": "Button",
+            "inputs": {
+                "schema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                },
+                "headersSchema": {
+                    "x-ms-user-timestamp": {
+                        "title": "Timestamp",
+                        "type": "string",
+                        "x-ms-dynamically-added": false
+                    }
+                }
+            }
+        }
+    },
+    "actions": {
+        "Retrieve_data_from_Dataverse": {
+            "runAfter": {},
+            "type": "OpenApiConnection",
+            "inputs": {
+                "host": {
+                    "connectionName": "shared_commondataserviceforapps",
+                    "operationId": "ListRecords",
+                    "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {},
+                "authentication": "@parameters('$authentication')"
+            }
+        },
+        "Ingest_data_subflow": {
+            "runAfter": {
+                "Retrieve_data_from_Dataverse": [
+                    "Succeeded"
+                ]
+            },
+            "type": "Workflow",
+            "inputs": {
+                "host": {
+                    "workflowReferenceName": ""
+                },
+                "body": {
+                    "payload": "@string(outputs('Retrieve_data_from_Dataverse')?['body'].value)"
+                }
+            }
+        }
+    }
+}

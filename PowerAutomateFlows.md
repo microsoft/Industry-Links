@@ -22,13 +22,13 @@ Import-Module -Name MsIndustryLinks
 
 Create a configuration file for the workflow with the required parameters for your use case. See [flow_workflow.json.tmpl](flow_workflow.json.tmpl) and [logicapp_workflow.json.tmpl](logicapp_workflow.json.tmpl) for examples of the workflow configuration file.
 
-|                 |                                      |
-| --------------- | ------------------------------------ |
-| Data sources    | Azure Blob Storage, Custom Connector |
-| Data transforms | CSV to JSON                          |
-| Data sinks      | Dataverse                            |
+|                 |                                                 |
+| --------------- | ----------------------------------------------- |
+| Data sources    | Azure Blob Storage, Custom Connector, Dataverse |
+| Data transforms | CSV to JSON                                     |
+| Data sinks      | Custom Connector, Dataverse                     |
 
-The custom connector data source supports both certified and non-certified connectors.
+The custom connector data source and sink supports both certified and non-certified connectors.
 
 A certifed custom connector allows for the connector to be publicly available for all users across all organizations. See the [Custom Connectors documentation](connectors/power_platform_custom_connector/README.md) to learn more about certifying your custom connector.
 
@@ -56,7 +56,7 @@ New-MsIndustryLink
     -PackageParametersFile package.parameters.json
 ```
 
-The output directory will contain the Power Platform solution containing the Industry Link workflows that pass data from the source to the sink (Dataverse). A solution zip file is also in the output directory ready to be imported into your Dataverse environment and published to AppSource.
+The output directory will contain the Power Platform solution containing the Industry Link workflows that pass data from the source to the sink. A solution zip file is also in the output directory ready to be imported into your Dataverse environment and published to AppSource.
 
 ## Generate an AppSource offer in Partner Center
 

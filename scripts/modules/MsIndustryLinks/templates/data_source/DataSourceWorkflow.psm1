@@ -97,6 +97,9 @@ function New-FlowDataSourceWorkflow {
         "customconnector" {
             $template = New-FlowCustomConnectorDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
         }
+        "dataverse" {
+            $template = New-FlowDataverseDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
+        }
         "eventhub" {
             $template = New-FlowEventHubDataSourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
             $triggerType = "datasource"
@@ -251,6 +254,45 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
     return $baseTemplate
 }
 
+function New-FlowDataverseDatasourceWorkflow {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
+        [object] $WorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The mapping of workflow templates to GUIDs.")]
+        [hashtable] $WorkflowGuids
+    )
+
+    $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/data_source/dataverse/flow_dataverse.json | ConvertFrom-Json
+    $parameters = $WorkflowConfig.dataSource.parameters
+
+    if (($null -eq $parameters.entityName) -or ($parameters.entityName -eq "")) {
+        throw "Parameters file is missing the 'entityName' parameter."
+    }
+
+    # Update the Dataverse parameters
+    $definition.actions.Retrieve_data_from_Dataverse.inputs.parameters = $parameters
+
+    # Update data ingestion sub-workflow configuration
+    $dataSinkWorkflowGuid = $WorkflowGuids[$WorkflowConfig.dataSink.name]
+    $definition.actions.Ingest_data_subflow.inputs.host.workflowReferenceName = $dataSinkWorkflowGuid
+
+    $baseTemplate.properties.definition = $definition
+    $baseTemplate.properties.connectionReferences = @{
+        shared_commondataserviceforapps = @{
+            runtimeSource = "embedded"
+            connection    = @{
+                connectionReferenceLogicalName = "shared_commondataserviceforapps_ref"
+            }
+            api           = @{
+                name = "shared_commondataserviceforapps"
+            }
+        }
+    }
+
+    return $baseTemplate
+}
+
 function New-FlowEventHubDataSourceWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
@@ -298,22 +340,28 @@ function New-LogicAppDataSourceWorkflow {
     $isCustomConnector = "customconnector" -eq $dataSourceType
 
     # Set the workflow parameters for the data source
+    $dataSourceParameters = $WorkflowConfig.dataSource.parameters
+
     if ($isCustomConnector) {
         $apiName = $WorkflowConfig.dataSource.properties.name
+        $apiId = Get-LogicAppApiId -DataSourceType $dataSourceType -ApiName $apiName -IsCustomConnectorCertified $WorkflowConfig.dataSource.isCertified
     }
     else {
         $apiName = Get-ApiName -DataSourceType $dataSourceType
+        $apiId = Get-LogicAppApiId -DataSourceType $dataSourceType -ApiName $apiName
+        $dataSourceParameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
     }
-    $dataSourceParameters = $WorkflowConfig.dataSource.parameters
+
     $dataSourceConnections = @{
         value = @{
             $apiName = @{
                 connectionId   = "[resourceId('Microsoft.Web/connections', '$apiName')]"
                 connectionName = $apiName
-                id             = "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, '$apiName')]"
+                id             = $apiId
             }
         }
     }
+
     $dataSourceParameters | Add-Member -MemberType NoteProperty -Name '$connections' -Value $dataSourceConnections
     $baseTemplate.parameters = $dataSourceParameters
 
@@ -321,6 +369,11 @@ function New-LogicAppDataSourceWorkflow {
     $definition = Get-Content $PSScriptRoot/templates/data_source/$dataSourceType/logicapp_$dataSourceType.json | ConvertFrom-Json
     if ($isCustomConnector) {
         Set-LogicAppCustomConnectorConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
+    }
+
+    # Set the Dataverse queries if defined in the workflow configuration
+    if ($null -ne $WorkflowConfig.dataSource.queries -and $dataSourceType -eq "dataverse") {
+        $definition.actions.Retrieve_data_from_Dataverse.inputs | Add-Member -MemberType NoteProperty -Name "queries" -Value $WorkflowConfig.dataSource.queries
     }
 
     # Add data transform action if defined in the workflow configuration
@@ -453,6 +506,23 @@ function Get-ApiName {
             throw "The connection type, $DataSourceType, is not supported."
         }
     }
+}
+
+function Get-LogicAppApiId {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The data source type.")]
+        [string] $DataSourceType,
+        [Parameter(Mandatory = $true, HelpMessage = "The API name.")]
+        [string] $ApiName,
+        [Parameter(Mandatory = $false, HelpMessage = "If the data source is a custom connector, is it certified.")]
+        [bool] $IsCustomConnectorCertified
+    )
+
+    $dataSource = $DataSourceType.ToLower()
+    if ($dataSource -eq "customconnector" -and !($IsCustomConnectorCertified)) {
+        return "[resourceId('Microsoft.Web/customApis', '$ApiName')]"
+    }
+    return "[subscriptionResourceId('Microsoft.Web/locations/managedApis', location, '$apiName')]"
 }
 
 function Get-TransformDataSubflow {

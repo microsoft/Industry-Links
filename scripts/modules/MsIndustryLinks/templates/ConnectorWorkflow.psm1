@@ -55,7 +55,7 @@ function New-MsIndustryLink {
     $workflowGuids = @{}
 
     # Create ingestion workflow template
-    $ingestionMetadata = New-IngestionWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory
+    $ingestionMetadata = New-IngestionWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory -AuthConfigFile $AuthConfigFile
     $workflowGuids[$ingestionMetadata.name] = $ingestionMetadata.guid
 
     if ("azureblobstorage" -eq $dataSourceType) {

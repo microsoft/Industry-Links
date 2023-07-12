@@ -18,10 +18,18 @@
   },
 
   "dataSource": {
-    "type": "{AzureBlobStorage/CustomConnector/EventHub}",
+    "type": "{AzureBlobStorage/CustomConnector/Dataverse/EventHub}",
 
     // Parameters required by the data source.
     "parameters": {
+
+      // Dataverse requires the plural table name
+      // (plural_table_name) to know which table to
+      // retrieve the data from.
+      "plural_table_name": {
+        "value": "contoso_transactions"
+      }
+
       // Azure Blob Storage requires the storage
       // account and container to check for data files.
       "storage_account_name": {
@@ -54,6 +62,12 @@
       }
     },
 
+    // Optional Dataverse query parameter.
+    // This can be used to manipulate data
+    // coming back from Dataverse using
+    // queries such as $filter, $select, $top etc
+    "queries": {}
+
     ///--- CUSTOM CONNECTORS ONLY ---///
     "isCertified": false,
     "properties": {
@@ -71,13 +85,18 @@
   },
 
   "dataSink": {
-    "upsert": false,
+    "type": "{CustomConnector/Dataverse}",
+
+    "upsert": false, // Dataverse only
+
     "parameters": {
+
+      ///--- DATAVERSE ONLY ---///
       "plural_table_name": {
         "value": "contoso_transactions"
       },
 
-      ///--- UPSERT ONLY ---///
+      ///--- DATAVERSE UPSERT ONLY ---///
 
       // Use one of primary key or alternate key. For more info, visit:
       // https://learn.microsoft.com/en-us/power-apps/developer/data-platform/use-alternate-key-reference-record
@@ -100,6 +119,17 @@
       }
     },
     "mapping": {
+      ///--- CUSTOM CONNECTORS ONLY ---///
+      // Remap the input data into the format required by the API.
+      // Example: Custom connector accepting a single object as input
+      "body/customer_id": "@items('For_each_item')?['contoso_customerid']",
+      "body/timestamp": "@items('For_each_item')?['contoso_timestamp']"
+
+      // Example: Custom connector accepting an array of objects as input
+      "customer_id": "@item()?['contoso_customerid']",
+      "timestamp": "@item()?['contoso_timestamp']"
+
+      ///--- DATAVERSE ONLY ---///
       // record's GUID, insert only. Leave out to autogenerate GUID.
       "contoso_transactionid": "@item()['transaction_id']",
 
@@ -109,6 +139,16 @@
       "contoso_merchantname": "@{item()['merchant_name']}",
       "contoso_merchanttype": "@{item()['merchant_type']}",
       "contoso_timestamp": "@{parseDateTime(item()['timestamp'])}"
+    },
+
+    ///--- CUSTOM CONNECTORS ONLY ---///
+    "isCertified": false,
+    "properties": {
+      "name": "contosoapi",
+      "inputType": "{Array/Object}",
+      "method": "post",
+      "path": "/transactions",
+      "queries": {}
     }
   }
 }
