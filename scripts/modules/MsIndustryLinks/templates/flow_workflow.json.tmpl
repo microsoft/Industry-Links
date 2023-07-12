@@ -17,7 +17,7 @@
   },
 
   "dataSource": {
-    "type": "{AzureBlobStorage/CustomConnector/EventHub}",
+    "type": "{AzureBlobStorage/CustomConnector/Dataverse/EventHub}",
     "name": "GetDataFromAzureBlobStorage",
 
     // Parameters required by the data source.
@@ -62,7 +62,7 @@
   },
 
   "dataSink": {
-    "type": "Dataverse",
+    "type": "{CustomConnector/Dataverse}",
     "name": "IngestIntoDataverse",
 
     "upsert": false, // Dataverse only
