@@ -371,9 +371,9 @@ function New-LogicAppDataSourceWorkflow {
         Set-LogicAppCustomConnectorConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
     }
 
-    # Set the custom connector queries if defined in the workflow configuration
-    if ($null -ne $WorkflowConfig.dataSource.queries -and !$isCustomConnector) {
-        $Definition.actions.Retrieve_data_from_Dataverse.inputs | Add-Member -MemberType NoteProperty -Name "queries" -Value $WorkflowConfig.dataSource.queries
+    # Set the Dataverse queries if defined in the workflow configuration
+    if ($null -ne $WorkflowConfig.dataSource.queries -and $dataSourceType -eq "dataverse") {
+        $definition.actions.Retrieve_data_from_Dataverse.inputs | Add-Member -MemberType NoteProperty -Name "queries" -Value $WorkflowConfig.dataSource.queries
     }
 
     # Add data transform action if defined in the workflow configuration
