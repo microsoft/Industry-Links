@@ -157,8 +157,16 @@ function New-DataverseTemplates {
         [string] $OutputDirectory
     )
 
+    # If this connection type was already added, skip adding another one
+    $connectionName = "dataverseconnection"
+    foreach ($resource in $MainTemplate.resources) {
+        if ($connectionName -eq $resource.name) {
+            return
+        }
+    }
+
     try {
-        $linkedTemplate = Get-LinkedTemplate -Name "dataverseconnection" -FileName "connection.dataverse.json"
+        $linkedTemplate = Get-LinkedTemplate -Name $connectionName -FileName "connection.dataverse.json"
         $connectionTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/dataverse/connection.json" | ConvertFrom-Json
 
         foreach ($param in @("tenantId", "clientId", "clientSecret")) {
@@ -166,7 +174,9 @@ function New-DataverseTemplates {
                 value = "[parameters('$param')]"
             }
 
-            $MainTemplate.parameters | Add-Member -MemberType NoteProperty -Name $param -Value $connectionTemplate.parameters.$param
+            if ($null -eq $MainTemplate.parameters.$param) {
+                $MainTemplate.parameters | Add-Member -MemberType NoteProperty -Name $param -Value $connectionTemplate.parameters.$param
+            }
         }
         $MainTemplate.resources += $linkedTemplate
 
@@ -263,7 +273,9 @@ function New-LogicAppTemplate {
             }
 
             $deployTemplate.parameters | Add-Member -MemberType NoteProperty -Name "organizationUrl" -Value $orgUrlParam
-            $MainTemplate.parameters | Add-Member -MemberType NoteProperty -Name "organizationUrl" -Value $orgUrlParam
+            if ($null -eq $MainTemplate.parameters.organizationUrl) {
+                $MainTemplate.parameters | Add-Member -MemberType NoteProperty -Name "organizationUrl" -Value $orgUrlParam
+            }
 
             $linkedTemplate.properties.parameters.organizationUrl = @{
                 value = "[parameters('organizationUrl')]"

@@ -349,7 +349,6 @@ function New-LogicAppDataSourceWorkflow {
     else {
         $apiName = Get-ApiName -DataSourceType $dataSourceType
         $apiId = Get-LogicAppApiId -DataSourceType $dataSourceType -ApiName $apiName
-        $dataSourceParameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
     }
 
     $dataSourceConnections = @{

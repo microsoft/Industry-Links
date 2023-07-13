@@ -22,13 +22,12 @@
 
     // Parameters required by the data source.
     "parameters": {
-
       // Dataverse requires the plural table name
       // (plural_table_name) to know which table to
       // retrieve the data from.
       "plural_table_name": {
         "value": "contoso_transactions"
-      }
+      },
 
       // Azure Blob Storage requires the storage
       // account and container to check for data files.
@@ -66,7 +65,7 @@
     // This can be used to manipulate data
     // coming back from Dataverse using
     // queries such as $filter, $select, $top etc
-    "queries": {}
+    "queries": {},
 
     ///--- CUSTOM CONNECTORS ONLY ---///
     "isCertified": false,
@@ -90,7 +89,6 @@
     "upsert": false, // Dataverse only
 
     "parameters": {
-
       ///--- DATAVERSE ONLY ---///
       "plural_table_name": {
         "value": "contoso_transactions"
@@ -123,11 +121,11 @@
       // Remap the input data into the format required by the API.
       // Example: Custom connector accepting a single object as input
       "body/customer_id": "@items('For_each_item')?['contoso_customerid']",
-      "body/timestamp": "@items('For_each_item')?['contoso_timestamp']"
+      "body/timestamp": "@items('For_each_item')?['contoso_timestamp']",
 
       // Example: Custom connector accepting an array of objects as input
       "customer_id": "@item()?['contoso_customerid']",
-      "timestamp": "@item()?['contoso_timestamp']"
+      "timestamp": "@item()?['contoso_timestamp']",
 
       ///--- DATAVERSE ONLY ---///
       // record's GUID, insert only. Leave out to autogenerate GUID.

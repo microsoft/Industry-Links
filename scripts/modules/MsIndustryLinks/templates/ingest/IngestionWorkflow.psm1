@@ -90,15 +90,11 @@ function New-LogicAppIngestionWorkflow {
         "customconnector" {
             $apiName = $DataSinkConfig.properties.name
             $apiId = Get-LogicAppApiId -DataSourceType $dataSinkType -ApiName $apiName -IsCustomConnectorCertified $DataSinkConfig.isCertified
-
             Set-LogicAppCustomConnectorDataSinkConfiguration -DataSinkConfig $DataSinkConfig -Definition $definition | Out-Null
         }
         "dataverse" {
             $apiName = Get-ApiName -DataSourceType $dataSinkType
             $apiId = Get-LogicAppApiId -DataSourceType $dataSinkType -ApiName $apiName
-
-            $DataSinkConfig.parameters | Add-Member -NotePropertyName 'organization_url' -NotePropertyValue @{value = "[parameters('organization_url')]" }
-
             $definition.actions.For_each_item.actions.Ingest_record.inputs.body = $DataSinkConfig.mapping
         }
         default {

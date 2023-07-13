@@ -1,63 +1,62 @@
 {
-    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
-    "contentVersion": "1.0.0.0",
-    "outputs": {},
-    "parameters": {
-      "$connections": {
-        "defaultValue": {},
-        "type": "Object"
-      },
-      "organization_url": {
-        "defaultValue": "",
-        "type": "String"
-      },
-      "plural_table_name": {
-        "defaultValue": "",
-        "type": "String"
-      }
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "outputs": {},
+  "parameters": {
+    "$connections": {
+      "defaultValue": {},
+      "type": "Object"
     },
-    "triggers": {
-      "manual": {
-        "inputs": {},
-        "kind": "Http",
-        "type": "Request"
-      }
+    "organization_url": {
+      "defaultValue": "[parameters('organizationUrl')]",
+      "type": "String"
     },
-    "actions": {
-      "Retrieve_data_from_Dataverse": {
-        "inputs": {
-          "headers": {
-            "organization": "@parameters('organization_url')",
-            "prefer": "odata.include-annotations=*"
-          },
-          "host": {
-            "connection": {
-                "name": "@parameters('$connections')['commondataservice']['connectionId']"
-            }
-          },
-          "method": "get",
-          "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent(parameters('plural_table_name')))}"
+    "plural_table_name": {
+      "defaultValue": "",
+      "type": "String"
+    }
+  },
+  "triggers": {
+    "manual": {
+      "inputs": {},
+      "kind": "Http",
+      "type": "Request"
+    }
+  },
+  "actions": {
+    "Retrieve_data_from_Dataverse": {
+      "inputs": {
+        "headers": {
+          "organization": "@parameters('organization_url')",
+          "prefer": "odata.include-annotations=*"
         },
-        "runAfter": {},
-        "type": "ApiConnection"
-      },
-      "Ingest_data_subflow": {
-        "runAfter": {
-          "Retrieve_data_from_Dataverse": ["Succeeded"]
-        },
-        "type": "Workflow",
-        "inputs": {
-          "host": {
-            "triggerName": "manual",
-            "workflow": {
-              "id": "[resourceId('Microsoft.Logic/workflows', 'ContosoIndustryLink_Sink')]"
-            }
-          },
-          "body": {
-            "payload": "@body('Retrieve_data_from_Dataverse')?['value']"
+        "host": {
+          "connection": {
+            "name": "@parameters('$connections')['commondataservice']['connectionId']"
           }
+        },
+        "method": "get",
+        "path": "/api/data/v9.1/@{encodeURIComponent(encodeURIComponent(parameters('plural_table_name')))}"
+      },
+      "runAfter": {},
+      "type": "ApiConnection"
+    },
+    "Ingest_data_subflow": {
+      "runAfter": {
+        "Retrieve_data_from_Dataverse": ["Succeeded"]
+      },
+      "type": "Workflow",
+      "inputs": {
+        "host": {
+          "triggerName": "manual",
+          "workflow": {
+            "id": "[resourceId('Microsoft.Logic/workflows', 'ContosoIndustryLink_Sink')]"
+          }
+        },
+        "body": {
+          "payload": "@body('Retrieve_data_from_Dataverse')?['value']"
         }
       }
     }
   }
-  
+}
