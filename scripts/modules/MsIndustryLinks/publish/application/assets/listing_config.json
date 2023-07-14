@@ -1,0 +1,78 @@
+{
+  "offer_setup": {
+    "alias": "contoso-industry-link",
+    "testDrive": false,
+    "crm": ""
+  },
+  "property_settings": {
+    "leveledCategories": {
+      "analytics": ["data-analytics"]
+    }
+  },
+  "offer_listing": {
+    "title": "Contoso Industry Link",
+    "publisher_name": "Contoso Inc.",
+    "summary": "Contoso Industry Link syncs data using Logic Apps.",
+    "short_description": "Contoso Industry Link syncs data using Logic Apps.",
+    "description": "This Industry Link syncs data using the Contoso API and Logic Apps.",
+    "keywords": ["industry", "cloud", "sync"],
+    "listing_contacts": [
+      {
+        "type": "CustomerSupport",
+        "email": "support@contoso.com",
+        "name": "First Last",
+        "phone": "123-456-7890"
+      },
+      {
+        "type": "Engineering",
+        "email": "engineering@contoso.com",
+        "name": "First Last",
+        "phone": "123-456-7890"
+      }
+    ],
+    "listing_uris": [
+      {
+        "type": "PrivacyUri",
+        "displayText": "Privacy URL",
+        "uri": "https://privacy.contoso.com"
+      },
+      {
+        "type": "PublicCloudSupport",
+        "displayText": "Public Cloud Support",
+        "uri": "https://www.contoso.com/support"
+      }
+    ],
+    "listing_logos": {
+      "logo_large": "logo-lg.png",
+      "logo_small": "logo-sm.png",
+      "logo_medium": "logo-md.png",
+      "logo_wide": "logo-wd.png"
+    },
+    "listing_screenshots": {},
+    "listing_videos": {}
+  },
+  "preview_audience": {
+    "subscriptions": ["<Your Azure Subscription ID>"]
+  },
+  "technical_configuration": {
+    "_note": "Only required for emitting metering events"
+  },
+  "plan_overview": {
+    "contoso-industry-link": {
+      "plan_listing": {
+        "title": "Contoso Industry Link",
+        "shortDescription": "Contoso Industry Link syncs data using Logic Apps.",
+        "description": "This Industry Link syncs data using the Contoso API and Logic Apps."
+      },
+      "pricing_and_availability": {
+        "visibility": "public"
+      },
+      "technical_configuration": {
+        "version": "0.0.1",
+        "allow_jit_access": false
+      }
+    }
+  },
+  "co-sell": {},
+  "resell": {}
+}

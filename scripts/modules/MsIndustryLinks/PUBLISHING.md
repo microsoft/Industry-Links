@@ -9,6 +9,7 @@ To make your Industry Link available to customers, create and publish an offer i
 - [PowerShell 7.0+](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell?view=powershell-7.3)
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) (Mac users can use brew to install: `brew install azure-cli`)
 - [azcopy](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10) (Mac users can use brew to install: `brew install azcopy`)
+- [Azure Partner Center CLI](https://github.com/microsoft/az-partner-center-cli)
 
 ### Accounts
 
@@ -43,6 +44,7 @@ Import-Module -Name MsIndustryLinks
 
 The **MsIndustryLinks** module contains cmdlets to automate some of the steps required to publish an Industry Link with Partner Center. Refer to the documentation for the type of offer you want to publish.
 
-| Offer type | Description          | Documentation                                                                 |
-| ---------- | -------------------- | ----------------------------------------------------------------------------- |
-| AppSource  | Power Automate Flows | [Publishing to Microsoft AppSource](publish/appsource/AppSourcePublishing.md) |
+| Offer type        | Description          | Documentation                                                                                                |
+| ----------------- | -------------------- | ------------------------------------------------------------------------------------------------------------ |
+| AppSource         | Power Automate Flows | [Publishing to Microsoft AppSource](publish/appsource/AppSourcePublishing.md)                                |
+| Azure Application | Logic Apps           | [Publishing Azure Application Offer to Azure Marketplace](publish/application/AzureMarketplacePublishing.md) |
