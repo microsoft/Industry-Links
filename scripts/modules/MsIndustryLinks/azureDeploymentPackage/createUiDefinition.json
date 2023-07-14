@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "resourceTypes": [],
+    "basics": [],
+    "steps": [
+      {
+        "name": "tags",
+        "label": "Tags",
+        "elements": [
+          {
+            "name": "tagsByResource",
+            "type": "Microsoft.Common.TagsByResource",
+            "resources": [],
+            "toolTip": "Tags are name/value pairs that enable you to categorize resources and view consolidated billing by applying the same tag to multiple resources and resource groups."
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "outTagsByResource": "[steps('tags').tagsByResource]"
+    }
+  }
+}
