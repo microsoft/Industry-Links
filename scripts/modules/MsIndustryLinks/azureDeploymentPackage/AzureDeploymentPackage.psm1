@@ -22,7 +22,7 @@
     .Parameter OutputDirectory
     The directory path where the ARM templates will be saved.
 
-    .Parameter SwaggerDefinitionFile
+    .Parameter ApiDefinitionFile
     The path to the custom connector Swagger API definition file. This is
     the API definition file required to deploy a non-verified custom
     connector for your API. Support authentication types: API Key.
@@ -32,7 +32,7 @@
     New-AzureDeploymentPackage -WorkflowConfigFile workflow.json -TemplateDirectory templates -OutputDirectory output
 
     # Generate ARM templates from Logic App workflow templates that uses a non-verified custom connector as a source or sink
-    New-AzureDeploymentPackage -WorkflowConfigFile workflow.json -TemplateDirectory templates -OutputDirectory output -SwaggerDefinitionFile api.swagger.json
+    New-AzureDeploymentPackage -WorkflowConfigFile workflow.json -TemplateDirectory templates -OutputDirectory output -ApiDefinitionFile api.swagger.json
 #>
 function New-AzureDeploymentPackage {
     param (
@@ -43,7 +43,7 @@ function New-AzureDeploymentPackage {
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the ARM templates will be saved.")]
         [string] $OutputDirectory,
         [Parameter(Mandatory = $false, HelpMessage = "The path to the custom connector Swagger API definition file.")]
-        [string] $SwaggerDefinitionFile = ""
+        [string] $ApiDefinitionFile = ""
     )
 
     $workflowConfig = Get-Content $WorkflowConfigFile | ConvertFrom-Json
@@ -63,7 +63,7 @@ function New-AzureDeploymentPackage {
 
     # Generate ARM templates for data sink workflow
     $sinkDeploymentName = "$($workflowName)_Sink"
-    New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSink -OutputDirectory $OutputDirectory -SwaggerDefinitionFile $SwaggerDefinitionFile
+    New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSink -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
     New-LogicAppTemplate -Name $sinkDeploymentName -Dependencies $dependencies -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSink -TemplateDirectory $TemplateDirectory -OutputDirectory $OutputDirectory
 
     # Generate ARM templates for data transform workflow
@@ -75,7 +75,7 @@ function New-AzureDeploymentPackage {
 
     # Generate ARM templates for data source workflow
     $dependencies += "[resourceId('Microsoft.Resources/deployments', '$sinkDeploymentName')]"
-    New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSource -OutputDirectory $OutputDirectory -SwaggerDefinitionFile $SwaggerDefinitionFile
+    New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSource -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
     New-LogicAppTemplate -Name $workflowName -Dependencies $dependencies -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSource -TemplateDirectory $TemplateDirectory -OutputDirectory $OutputDirectory
 
     # Generate main ARM template
@@ -93,7 +93,7 @@ function New-ResourceTemplate {
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the ARM templates will be saved.")]
         [string] $OutputDirectory,
         [Parameter(Mandatory = $false, HelpMessage = "The path to the custom connector Swagger API definition file.")]
-        [string] $SwaggerDefinitionFile = ""
+        [string] $ApiDefinitionFile = ""
     )
 
     switch ($SubWorkflowConfig.type.ToLower()) {
@@ -102,7 +102,7 @@ function New-ResourceTemplate {
             break
         }
         "customconnector" {
-            New-CustomConnectorTemplates -MainTemplate $MainTemplate -SubWorkflowConfig $SubWorkflowConfig -OutputDirectory $OutputDirectory -SwaggerDefinitionFile $SwaggerDefinitionFile
+            New-CustomConnectorTemplates -MainTemplate $MainTemplate -SubWorkflowConfig $SubWorkflowConfig -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
             break
         }
         "dataverse" {
@@ -174,7 +174,7 @@ function New-CustomConnectorTemplates {
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the ARM templates will be saved.")]
         [string] $OutputDirectory,
         [Parameter(Mandatory = $false, HelpMessage = "The path to the custom connector Swagger API definition file.")]
-        [string] $SwaggerDefinitionFile = ""
+        [string] $ApiDefinitionFile = ""
     )
 
     $properties = $SubWorkflowConfig.properties
@@ -198,11 +198,11 @@ function New-CustomConnectorTemplates {
 
     $dependencies = @()
     if (-not $SubWorkflowConfig.isCertified) {
-        if ("" -eq $SwaggerDefinitionFile) {
+        if ("" -eq $ApiDefinitionFile) {
             throw "The Swagger API definition file is required for custom connectors that are not certified."
         }
 
-        $swaggerDefinition = Get-Content $SwaggerDefinitionFile | ConvertFrom-Json
+        $swaggerDefinition = Get-Content $ApiDefinitionFile | ConvertFrom-Json
         $securityDefinition = ($swaggerDefinition.securityDefinitions.PSObject.Properties | Select -First 1).Value
 
         if ($null -eq $securityDefinition) {

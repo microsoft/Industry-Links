@@ -11,7 +11,7 @@ New-AzureDeploymentPackage
     -WorkflowConfigFile <String>
     -TemplateDirectory <String>
     -OutputDirectory <String>
-    [-SwaggerDefinitionFile] <string>
+    [-ApiDefinitionFile] <String>
 ```
 
 ## Description
@@ -36,7 +36,7 @@ New-AzureDeploymentPackage
     -WorkflowConfigFile workflow.json
     -TemplateDirectory templates
     -OutputDirectory output
-    -SwaggerDefinitionFile api.swagger.json
+    -ApiDefinitionFile api.swagger.json
 ```
 
 ## Parameters
@@ -68,7 +68,7 @@ The directory path where the ARM templates will be saved.
 | Type:          | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
 | Default value: | None                                                                                                                  |
 
-### -SwaggerDefinitionFile
+### -ApiDefinitionFile
 
 The path to the custom connector Swagger API definition file. This is the API definition file required to deploy a non-verified custom connector for your API. Support authentication types: API Key.
 
