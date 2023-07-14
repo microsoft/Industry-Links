@@ -1,0 +1,73 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Specifies the location in which the resources should be deployed."
+      }
+    },
+    "managedIdentityName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the user managed identity to assign to this resource."
+      }
+    }
+  },
+  "variables": {
+    "eventHubNamespaceName": "ContosoIndustryLinkEH",
+    "eventHubSku": "Standard",
+    "skuCapacity": 1,
+    "eventHubName": "myeventhubname",
+    "consumerGroupName": "$Default",
+    "roleDefinitionId": "f526a384-b230-433a-b45c-95f59c4a2dec",
+    "roleAssignmentDescription": "Contoso Industry Link event hub access"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.EventHub/namespaces",
+      "apiVersion": "2022-10-01-preview",
+      "name": "[variables('eventHubNamespaceName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[variables('eventHubSku')]",
+        "tier": "[variables('eventHubSku')]",
+        "capacity": "[variables('skuCapacity')]"
+      },
+      "tags": {},
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "apiVersion": "2022-10-01-preview",
+      "name": "[format('{0}/{1}', variables('eventHubNamespaceName'), variables('eventHubName'))]",
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', variables('eventHubNamespaceName'))]"
+      ]
+    },
+    {
+      "condition": "[and(not(equals(variables('consumerGroupName'), '')), not(equals(variables('consumerGroupName'), '$Default')))]",
+      "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+      "apiVersion": "2022-10-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('eventHubNamespaceName'), variables('eventHubName'), variables('consumerGroupName'))]",
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces/eventhubs', variables('eventHubNamespaceName'), variables('eventHubName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), resourceGroup().id, variables('roleDefinitionId'))]",
+      "properties": {
+        "description": "[variables('roleAssignmentDescription')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2018-11-30').principalId]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleDefinitionId'))]",
+        "principalType": "ServicePrincipal"
+      }
+    }
+  ]
+}
