@@ -12,8 +12,8 @@ The **MsIndustryLinks** module contains cmdlets to generate workflow templates (
 
 |                                                                                    |                                                                                       |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [New-AppSourceOffer](appsource/New-AppSourceOffer.md)                              | Create an AppSource offer in Partner Center                                           |
-| [New-AppSourcePackage](appsource/New-AppSourcePackage.md)                          | Create an AppSource package from managed solution                                     |
+| [New-AppSourceOffer](publish/appsource/New-AppSourceOffer.md)                      | Create an AppSource offer in Partner Center                                           |
+| [New-AppSourcePackage](publish/appsource/New-AppSourcePackage.md)                  | Create an AppSource package from managed solution                                     |
 | [New-AzureDeploymentPackage](azureDeploymentPackage/New-AzureDeploymentPackage.md) | Generate ARM templates that deploys the Azure resources required for an Industry Link |
 | [New-CustomConnector](customConnector/New-CustomConnector.md)                      | Create a custom connector in a Power Platform environment                             |
 | [New-CustomConnectorConfig](customConnector/New-CustomConnectorConfig.md)          | Creates Power Platform custom connector asset configuration files                     |

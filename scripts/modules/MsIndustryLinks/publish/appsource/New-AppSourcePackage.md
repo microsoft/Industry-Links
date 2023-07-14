@@ -1,6 +1,6 @@
 # New-AppSourcePackage
 
-Module: [MsIndustryLinks](../README.md)
+Module: [MsIndustryLinks](../../README.md)
 
 Generates an App Source package for publishing.
 
