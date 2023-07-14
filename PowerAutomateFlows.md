@@ -60,4 +60,4 @@ The output directory will contain the Power Platform solution containing the Ind
 
 ## Generate an AppSource offer in Partner Center
 
-Please refer to [Publishing to Microsoft AppSource](scripts/modules/MsIndustryLinks/appsource/AppSourcePublishing.md) for more information on how to publish your Industry Link to AppSource.
+Please refer to [Publishing to Microsoft AppSource](scripts/modules/MsIndustryLinks/publish/appsource/AppSourcePublishing.md) for more information on how to publish your Industry Link to AppSource.
