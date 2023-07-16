@@ -362,8 +362,13 @@ function New-LogicAppDataSourceWorkflow {
         }
     }
 
-    $dataSourceParameters | Add-Member -MemberType NoteProperty -Name '$connections' -Value $dataSourceConnections
-    $baseTemplate.parameters = $dataSourceParameters
+    if ($null -eq $dataSourceParameters) {
+        $baseTemplate.parameters | Add-Member -MemberType NoteProperty -Name '$connections' -Value $dataSourceConnections
+    }
+    else {
+        $dataSourceParameters | Add-Member -MemberType NoteProperty -Name '$connections' -Value $dataSourceConnections
+        $baseTemplate.parameters = $dataSourceParameters
+    }
 
     # Set the custom connector properties if data source is CustomConnector
     $definition = Get-Content $PSScriptRoot/templates/data_source/$dataSourceType/logicapp_$dataSourceType.json | ConvertFrom-Json

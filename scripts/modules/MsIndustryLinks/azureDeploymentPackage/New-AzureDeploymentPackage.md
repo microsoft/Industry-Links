@@ -11,6 +11,7 @@ New-AzureDeploymentPackage
     -WorkflowConfigFile <String>
     -TemplateDirectory <String>
     -OutputDirectory <String>
+    [-ApiDefinitionFile] <String>
 ```
 
 ## Description
@@ -26,6 +27,16 @@ New-AzureDeploymentPackage
     -WorkflowConfigFile workflow.json
     -TemplateDirectory templates
     -OutputDirectory output
+```
+
+### Example 2: Generate ARM templates from Logic App workflow templates that uses a non-verified custom connector as a source or sink
+
+```powershell
+New-AzureDeploymentPackage
+    -WorkflowConfigFile workflow.json
+    -TemplateDirectory templates
+    -OutputDirectory output
+    -ApiDefinitionFile api.swagger.json
 ```
 
 ## Parameters
@@ -51,6 +62,15 @@ The path to the workflow templates required for your Industry Link. This should 
 ### -OutputDirectory
 
 The directory path where the ARM templates will be saved.
+
+|                |                                                                                                                       |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Type:          | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
+| Default value: | None                                                                                                                  |
+
+### -ApiDefinitionFile
+
+The path to the custom connector Swagger API definition file. This is the API definition file required to deploy a non-verified custom connector for your API. Support authentication types: API Key.
 
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |

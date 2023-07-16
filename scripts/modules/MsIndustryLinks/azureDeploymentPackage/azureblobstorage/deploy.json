@@ -19,8 +19,7 @@
   "variables": {
     "storageAccountName": "contosoindustrylinksa",
     "containerName": "data",
-    "roleDefinitionId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
-    "roleAssignmentDescription": "Contoso Industry Link blob storage access"
+    "roleDefinitionId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
   },
   "resources": [
     {
@@ -57,7 +56,6 @@
       "apiVersion": "2020-04-01-preview",
       "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), resourceGroup().id, variables('roleDefinitionId'))]",
       "properties": {
-        "description": "[variables('roleAssignmentDescription')]",
         "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), '2018-11-30').principalId]",
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleDefinitionId'))]",
         "principalType": "ServicePrincipal"

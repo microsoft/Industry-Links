@@ -22,9 +22,17 @@
     .Parameter OutputDirectory
     The directory path where the ARM templates will be saved.
 
+    .Parameter ApiDefinitionFile
+    The path to the custom connector Swagger API definition file. This is
+    the API definition file required to deploy a non-verified custom
+    connector for your API. Support authentication types: API Key.
+
     .Example
     # Generate ARM templates from Logic App workflow templates
     New-AzureDeploymentPackage -WorkflowConfigFile workflow.json -TemplateDirectory templates -OutputDirectory output
+
+    # Generate ARM templates from Logic App workflow templates that uses a non-verified custom connector as a source or sink
+    New-AzureDeploymentPackage -WorkflowConfigFile workflow.json -TemplateDirectory templates -OutputDirectory output -ApiDefinitionFile api.swagger.json
 #>
 function New-AzureDeploymentPackage {
     param (
@@ -33,7 +41,9 @@ function New-AzureDeploymentPackage {
         [Parameter(Mandatory = $true, HelpMessage = "The path to the directory containing the workflow templates.")]
         [string] $TemplateDirectory,
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the ARM templates will be saved.")]
-        [string] $OutputDirectory
+        [string] $OutputDirectory,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the custom connector Swagger API definition file.")]
+        [string] $ApiDefinitionFile = ""
     )
 
     $workflowConfig = Get-Content $WorkflowConfigFile | ConvertFrom-Json
@@ -53,7 +63,7 @@ function New-AzureDeploymentPackage {
 
     # Generate ARM templates for data sink workflow
     $sinkDeploymentName = "$($workflowName)_Sink"
-    New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSink -OutputDirectory $OutputDirectory
+    New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSink -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
     New-LogicAppTemplate -Name $sinkDeploymentName -Dependencies $dependencies -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSink -TemplateDirectory $TemplateDirectory -OutputDirectory $OutputDirectory
 
     # Generate ARM templates for data transform workflow
@@ -65,7 +75,7 @@ function New-AzureDeploymentPackage {
 
     # Generate ARM templates for data source workflow
     $dependencies += "[resourceId('Microsoft.Resources/deployments', '$sinkDeploymentName')]"
-    New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSource -OutputDirectory $OutputDirectory
+    New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSource -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
     New-LogicAppTemplate -Name $workflowName -Dependencies $dependencies -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSource -TemplateDirectory $TemplateDirectory -OutputDirectory $OutputDirectory
 
     # Generate main ARM template
@@ -81,12 +91,18 @@ function New-ResourceTemplate {
         [Parameter(Mandatory = $true, HelpMessage = "The configuration object of the sub-workflow (source, sink, transform).")]
         [object] $SubWorkflowConfig,
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the ARM templates will be saved.")]
-        [string] $OutputDirectory
+        [string] $OutputDirectory,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the custom connector Swagger API definition file.")]
+        [string] $ApiDefinitionFile = ""
     )
 
     switch ($SubWorkflowConfig.type.ToLower()) {
         "azureblobstorage" {
-            New-BlobStorageTemplate -MainTemplate $MainTemplate -Parameters $SubWorkflowConfig.parameters -OutputDirectory $OutputDirectory
+            New-BlobStorageTemplates -MainTemplate $MainTemplate -Parameters $SubWorkflowConfig.parameters -OutputDirectory $OutputDirectory
+            break
+        }
+        "customconnector" {
+            New-CustomConnectorTemplates -MainTemplate $MainTemplate -SubWorkflowConfig $SubWorkflowConfig -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
             break
         }
         "dataverse" {
@@ -103,7 +119,7 @@ function New-ResourceTemplate {
     }
 }
 
-function New-BlobStorageTemplate {
+function New-BlobStorageTemplates {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
         [object] $MainTemplate,
@@ -149,6 +165,86 @@ function New-BlobStorageTemplate {
     }
 }
 
+function New-CustomConnectorTemplates {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
+        [object] $MainTemplate,
+        [Parameter(Mandatory = $true, HelpMessage = "The configuration object of the sub-workflow (source, sink, transform).")]
+        [object] $SubWorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The directory path where the ARM templates will be saved.")]
+        [string] $OutputDirectory,
+        [Parameter(Mandatory = $false, HelpMessage = "The path to the custom connector Swagger API definition file.")]
+        [string] $ApiDefinitionFile = ""
+    )
+
+    $properties = $SubWorkflowConfig.properties
+    $name = $properties.name.ToLower()
+    $authType = $properties.authType.ToLower()
+
+    # If this connection type with the same name was already added, skip adding another one
+    foreach ($resource in $MainTemplate.resources) {
+        if ($name -eq $resource.name) {
+            return
+        }
+    }
+
+    if ("apikey" -ne $authType) {
+        throw "The custom connector, $($properties.name), with authentication type, $($properties.authType), is not supported."
+    }
+
+    $fileName = "connection.$name.json"
+    $connectionTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/customconnector/$authType.connection.json" | ConvertFrom-Json
+    $connectionTemplate.variables.name = $properties.name
+
+    $dependencies = @()
+    if (-not $SubWorkflowConfig.isCertified) {
+        if ("" -eq $ApiDefinitionFile) {
+            throw "The Swagger API definition file is required for custom connectors that are not certified."
+        }
+
+        $swaggerDefinition = Get-Content $ApiDefinitionFile | ConvertFrom-Json
+        $securityDefinition = ($swaggerDefinition.securityDefinitions.PSObject.Properties | Select -First 1).Value
+
+        if ($null -eq $securityDefinition) {
+            throw "An API key security definition must be defined."
+        }
+        if ("apikey" -ne $securityDefinition.type.ToLower()) {
+            throw "The security definition type, $($securityDefinition.type), is not supported. Choose from: apiKey."
+        }
+
+        try {
+            $deployTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/customconnector/deploy.json" | ConvertFrom-Json
+            $deployTemplate.variables.name = $properties.name
+            $deployTemplate.resources[0].properties.backendService.serviceUrl = "$($swaggerDefinition.schemes[0])://$($swaggerDefinition.host)$($swaggerDefinition.basePath)"
+            $deployTemplate.resources[0].properties.swagger = $swaggerDefinition
+            $deployTemplate | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/deploy.$name.json"
+
+            $deployLinkedTemplate = Get-LinkedTemplate -Name $name -FileName "deploy.$name.json"
+            $MainTemplate.resources += $deployLinkedTemplate
+        }
+        catch {
+            throw "Failed to generate deployment template for custom connector."
+        }
+
+        $connectionTemplate.resources[0].properties.api.id = "[resourceId('Microsoft.Web/customApis', toLower(variables('name')))]"
+
+        $dependencies = @(
+            "[resourceId('Microsoft.Resources/deployments', '$name')]"
+        )
+    }
+
+    try {
+        $connectionLinkedTemplate = Get-LinkedTemplate -Name "$($name)connection" -FileName $fileName -Dependencies $dependencies
+        Add-ConnectionTemplateParameters -MainTemplate $MainTemplate -LinkedTemplate $connectionLinkedTemplate -Parameters $connectionTemplate.parameters -Prefix $name
+        $MainTemplate.resources += $connectionLinkedTemplate
+
+        $connectionTemplate | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/$fileName"
+    }
+    catch {
+        throw "Failed to add linked template for custom connector connection."
+    }
+}
+
 function New-DataverseTemplates {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
@@ -168,16 +264,7 @@ function New-DataverseTemplates {
     try {
         $linkedTemplate = Get-LinkedTemplate -Name $connectionName -FileName "connection.dataverse.json"
         $connectionTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/dataverse/connection.json" | ConvertFrom-Json
-
-        foreach ($param in @("tenantId", "clientId", "clientSecret")) {
-            $linkedTemplate.properties.parameters.$param = @{
-                value = "[parameters('$param')]"
-            }
-
-            if ($null -eq $MainTemplate.parameters.$param) {
-                $MainTemplate.parameters | Add-Member -MemberType NoteProperty -Name $param -Value $connectionTemplate.parameters.$param
-            }
-        }
+        Add-ConnectionTemplateParameters -MainTemplate $MainTemplate -LinkedTemplate $linkedTemplate -Parameters $connectionTemplate.parameters
         $MainTemplate.resources += $linkedTemplate
 
         Copy-Item "$PSScriptRoot/azureDeploymentPackage/dataverse/connection.json" "$OutputDirectory/connection.dataverse.json"
@@ -260,7 +347,13 @@ function New-LogicAppTemplate {
         $resourceType = $SubWorkflowConfig.type.ToLower()
 
         if ("" -ne $resourceType) {
-            $Dependencies += "[resourceId('Microsoft.Resources/deployments', '$($resourceType)connection')]"
+            if ("customconnector" -eq $resourceType) {
+                $connectionName = "$($SubWorkflowConfig.properties.name)connection"
+            }
+            else {
+                $connectionName = "$($resourceType)connection"
+            }
+            $Dependencies += "[resourceId('Microsoft.Resources/deployments', '$connectionName')]"
         }
         $linkedTemplate = Get-LinkedTemplate -Name $Name -FileName "deploy.$Name.json" -Dependencies $Dependencies
 
@@ -323,6 +416,39 @@ function Get-LinkedTemplate {
             }
         }
         dependsOn  = $Dependencies
+    }
+}
+
+function Add-ConnectionTemplateParameters {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
+        [object] $MainTemplate,
+        [Parameter(Mandatory = $true, HelpMessage = "The linked ARM template object.")]
+        [object] $LinkedTemplate,
+        [Parameter(Mandatory = $true, HelpMessage = "The connection template parameters.")]
+        [object] $Parameters,
+        [Parameter(Mandatory = $false, HelpMessage = "The prefix to add to the parameter names.")]
+        [string] $Prefix = ""
+    )
+
+    if ("" -ne $Prefix) {
+        $Prefix = "$($Prefix)_"
+    }
+
+    foreach ($param in $Parameters.PSObject.Properties) {
+        $paramName = $param.Name
+
+        # Skip location parameter
+        if ("location" -ne $paramName) {
+            $mainParamName = "$Prefix$paramName"
+            $LinkedTemplate.properties.parameters.$paramName = @{
+                value = "[parameters('$mainParamName')]"
+            }
+
+            if ($null -eq $MainTemplate.parameters.$mainParamName) {
+                $MainTemplate.parameters | Add-Member -MemberType NoteProperty -Name $mainParamName -Value $param.Value
+            }
+        }
     }
 }
 
