@@ -1,6 +1,6 @@
 # New-AppSourceOffer
 
-Module: [MsIndustryLinks](../README.md)
+Module: [MsIndustryLinks](../../README.md)
 
 Generates an App Source package and creates an offer for the Industry Link.
 

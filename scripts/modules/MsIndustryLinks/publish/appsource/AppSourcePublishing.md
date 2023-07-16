@@ -20,7 +20,7 @@ Create a `config.json` file using the [config template](config.json.tmpl). The c
 
 ## Step 3. Create a managed solution for your Industry Link
 
-See the cmdlet [New-WorkflowPackage](../templates/package/New-WorkflowPackage.md) for more information on creating a managed solution for your Industry Link.
+See the cmdlet [New-WorkflowPackage](../../templates/package/New-WorkflowPackage.md) for more information on creating a managed solution for your Industry Link.
 
 ## Step 4. Create a new offer for your Industry Link
 

@@ -491,7 +491,7 @@ function New-AppSourcePackage {
     try {
         New-Item -ItemType Directory -Path AppSourcePackage | Out-Null
         Copy-Item -Path $packageFile -Destination AppSourcePackage/package.zip | Out-Null
-        Copy-Item -Path "$PSScriptRoot/appsource/assets/``[Content_Types``].xml" -Destination AppSourcePackage | Out-Null
+        Copy-Item -Path "$PSScriptRoot/publish/appsource/assets/``[Content_Types``].xml" -Destination AppSourcePackage | Out-Null
         Copy-Item -Path "$assetsFullPath/input.xml" -Destination AppSourcePackage | Out-Null
         Copy-Item -Path "$assetsFullPath/logo32x32.png" -Destination AppSourcePackage | Out-Null
         Copy-Item -Path "$assetsFullPath/TermsOfUse.html" -Destination AppSourcePackage | Out-Null

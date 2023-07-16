@@ -43,6 +43,6 @@ Import-Module -Name MsIndustryLinks
 
 The **MsIndustryLinks** module contains cmdlets to automate some of the steps required to publish an Industry Link with Partner Center. Refer to the documentation for the type of offer you want to publish.
 
-| Offer type | Description          | Documentation                                                         |
-| ---------- | -------------------- | --------------------------------------------------------------------- |
-| AppSource  | Power Automate Flows | [Publishing to Microsoft AppSource](appsource/AppSourcePublishing.md) |
+| Offer type | Description          | Documentation                                                                 |
+| ---------- | -------------------- | ----------------------------------------------------------------------------- |
+| AppSource  | Power Automate Flows | [Publishing to Microsoft AppSource](publish/appsource/AppSourcePublishing.md) |
