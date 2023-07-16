@@ -61,10 +61,16 @@ function New-AzureDeploymentPackage {
     $mainTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/azuredeploy.json" | ConvertFrom-Json
     $mainTemplate.variables.managedIdentityName = "$($workflowName)User"
 
+    $resourceTypes = @(
+        "Microsoft.ManagedIdentity/userAssignedIdentities",
+        "Microsoft.Logic/workflows"
+    )
+
     # Generate ARM templates for data sink workflow
     $sinkDeploymentName = "$($workflowName)_Sink"
     New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSink -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
     New-LogicAppTemplate -Name $sinkDeploymentName -Dependencies $dependencies -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSink -TemplateDirectory $TemplateDirectory -OutputDirectory $OutputDirectory
+    $resourceTypes = Add-ResourceType -SubWorkflowConfig $workflowConfig.dataSink -ResourceTypes $resourceTypes
 
     # Generate ARM templates for data transform workflow
     if ($null -ne $workflowConfig.dataTransform.type) {
@@ -77,9 +83,14 @@ function New-AzureDeploymentPackage {
     $dependencies += "[resourceId('Microsoft.Resources/deployments', '$sinkDeploymentName')]"
     New-ResourceTemplate -WorkflowName $workflowName -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSource -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
     New-LogicAppTemplate -Name $workflowName -Dependencies $dependencies -MainTemplate $mainTemplate -SubWorkflowConfig $workflowConfig.dataSource -TemplateDirectory $TemplateDirectory -OutputDirectory $OutputDirectory
+    $resourceTypes = Add-ResourceType -SubWorkflowConfig $workflowConfig.dataSource -ResourceTypes $resourceTypes
 
     # Generate main ARM template
-    $mainTemplate | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/azuredeploy.json"
+    $mainTemplate | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/mainTemplate.json"
+
+    New-CreateUiDefinition -MainTemplate $mainTemplate -ResourceTypes $resourceTypes -OutputDirectory $OutputDirectory
+
+    Compress-Archive -Path "$OutputDirectory/*.json" -DestinationPath "$OutputDirectory/marketplacePackage.zip" -Force
 }
 
 function New-ResourceTemplate {
@@ -389,6 +400,46 @@ function New-LogicAppTemplate {
     }
 }
 
+function New-CreateUiDefinition {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
+        [object] $MainTemplate,
+        [Parameter(Mandatory = $true, HelpMessage = "The list of resource types.")]
+        [array] $ResourceTypes,
+        [Parameter(Mandatory = $true, HelpMessage = "The directory path where the createUiDefinition.json file will be saved.")]
+        [string] $OutputDirectory
+    )
+
+    $uiDefinition = Get-Content "$PSScriptRoot/azureDeploymentPackage/createUiDefinition.json" | ConvertFrom-Json
+
+    $ignoreParams = @("location", "_artifactsLocation", "_artifactsLocationSasToken")
+    foreach ($param in $MainTemplate.parameters.PSObject.Properties) {
+        if ($param.Name -notin $ignoreParams) {
+            $paramValue = $param.Value
+            switch ($paramValue.type.ToLower()) {
+                "string" {
+                    $uiDefinition.parameters.basics += New-TextBoxUIElement -Name $param.Name -Label $param.Name -Tooltip $paramValue.metadata.description
+                    break
+                }
+                "securestring" {
+                    $uiDefinition.parameters.basics += New-SecretTextBoxUIElement -Name $param.Name -Label $param.Name -Tooltip $paramValue.metadata.description
+                    break
+                }
+                Default {
+                    throw "Unsupported createUiDefinition parameter type: $($paramValue.type)"
+                }
+            }
+
+            $uiDefinition.parameters.outputs | Add-Member -MemberType NoteProperty -Name $param.Name -Value "[basics('$($param.Name)')]"
+        }
+    }
+
+    $uiDefinition.parameters.resourceTypes = $ResourceTypes
+    $uiDefinition.parameters.steps[0].elements[0].resources = $ResourceTypes
+
+    $uiDefinition | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/createUiDefinition.json"
+}
+
 function Get-LinkedTemplate {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The name of the linked template.")]
@@ -449,6 +500,90 @@ function Add-ConnectionTemplateParameters {
                 $MainTemplate.parameters | Add-Member -MemberType NoteProperty -Name $mainParamName -Value $param.Value
             }
         }
+    }
+}
+
+function Add-ResourceType {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "The configuration object of the sub-workflow (source, sink, transform).")]
+        [object] $SubWorkflowConfig,
+        [Parameter(Mandatory = $true, HelpMessage = "The list of resource types.")]
+        [array] $ResourceTypes
+    )
+
+    switch ($SubWorkflowConfig.type.ToLower()) {
+        "azureblobstorage" {
+            if ("Microsoft.Storage/storageAccounts" -notin $ResourceTypes) {
+                $ResourceTypes += "Microsoft.Storage/storageAccounts"
+            }
+        }
+        "eventhub" {
+            if ("Microsoft.EventHub/namespaces/eventhubs" -notin $ResourceTypes) {
+                $ResourceTypes += "Microsoft.EventHub/namespaces/eventhubs"
+            }
+        }
+        Default {
+            # Do nothing
+        }
+    }
+
+    return $ResourceTypes
+}
+
+function New-TextBoxUIElement {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
+        [string] $Name,
+        [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
+        [string] $Label,
+        [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
+        [string] $Tooltip,
+        [Parameter(Mandatory = $false, HelpMessage = "Name of the solution provider.")]
+        [string] $DefaultValue = "",
+        [Parameter(Mandatory = $false, HelpMessage = "Name of the solution provider.")]
+        [bool] $Required = $true
+    )
+
+    return @{
+        name         = $Name
+        type         = "Microsoft.Common.TextBox"
+        label        = $Label
+        toolTip      = $Tooltip
+        defaultValue = $DefaultValue
+        constraints  = @{
+            required = $Required
+        }
+        visible      = $true
+    }
+}
+
+function New-SecretTextBoxUIElement {
+    param (
+        [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
+        [string] $Name,
+        [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
+        [string] $Label,
+        [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
+        [string] $Tooltip,
+        [Parameter(Mandatory = $false, HelpMessage = "Name of the solution provider.")]
+        [bool] $Required = $true
+    )
+
+    return @{
+        name        = $Name
+        type        = "Microsoft.Common.PasswordBox"
+        label       = @{
+            password        = $Label
+            confirmPassword = $Label
+        }
+        toolTip     = $Tooltip
+        constraints = @{
+            required = $Required
+        }
+        options     = @{
+            hideConfirmation = $true
+        }
+        visible     = $true
     }
 }
 
