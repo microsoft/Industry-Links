@@ -35,9 +35,10 @@ The templates, modules and scripts in this repository use a combination of the f
 
 Use the following templates to build and publish your own Industry Link! Each use case includes a README file that contains instructions on how to modify, build and publish a solution.
 
-| Solution                                                                  | Use Case                                                 |
-| ------------------------------------------------------------------------- | -------------------------------------------------------- |
-| [Solution-Aware Power Automate Flows in AppSource](PowerAutomateFlows.md) | Ideal for transfering data between an API or file and Dataverse. |
+| Solution                                                                  | Use Case                                                                                |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Solution-Aware Power Automate Flows in AppSource](PowerAutomateFlows.md) | Ideal for transfering data between an API or file and Dataverse using Power Platform.   |
+| [Logic App-based Industry Link in Azure Marketplace](LogicApps.md)        | Ideal for transfering data between an API, file, Event Hubs, and Dataverse using Azure. |
 
 ## Contributing
 

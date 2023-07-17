@@ -20,7 +20,7 @@ Import-Module -Name MsIndustryLinks
 
 ### Configure data source, transform and sink
 
-Create a configuration file for the workflow with the required parameters for your use case. See [flow_workflow.json.tmpl](flow_workflow.json.tmpl) and [logicapp_workflow.json.tmpl](logicapp_workflow.json.tmpl) for examples of the workflow configuration file.
+Create a configuration file for the workflow with the required parameters for your use case. See [flow_workflow.json.tmpl](scripts/modules/MsIndustryLinks/templates/flow_workflow.json.tmpl) for an example of the workflow configuration file.
 
 |                 |                                                 |
 | --------------- | ----------------------------------------------- |
@@ -30,7 +30,7 @@ Create a configuration file for the workflow with the required parameters for yo
 
 The custom connector data source and sink supports both certified and non-certified connectors.
 
-A certifed custom connector allows for the connector to be publicly available for all users across all organizations. See the [Custom Connectors documentation](connectors/power_platform_custom_connector/README.md) to learn more about certifying your custom connector.
+A certifed custom connector allows for the connector to be publicly available for all users across all organizations. See [Power Platform Custom Connector Certification](scripts/modules/MsIndustryLinks/customConnector/CustomConnectorCertification.md) to learn more about certifying your custom connector.
 
 A non-certified custom connector is only able to be shared with users in your organization. This is an option for testing your Industry Link while your custom connector is being certified.
 To create an Industry Link with a non-certified connector, an Azure AD application is required to obtain the required configuration details of your custom connector via the Dataverse Web API. This will be configured in an [authentication config file](scripts/modules/MsIndustryLinks/templates/auth.json.tmpl). See the [Microsoft Dataverse documentation](https://learn.microsoft.com/en-us/power-apps/developer/data-platform/build-web-applications-server-server-s2s-authentication) to associate an Azure AD application with your Dataverse environment.
