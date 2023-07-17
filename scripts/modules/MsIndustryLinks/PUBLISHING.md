@@ -1,6 +1,6 @@
 # Publishing
 
-To make your Industry Link available to customers, create and publish an offer in Partner Center. Use the [MsIndustryLinks](README.md) module to package and create AppSource offers. Currently, only AppSource offers are supported.
+To make your Industry Link available to customers, create and publish an offer in Partner Center. Use the [MsIndustryLinks](README.md) module to package and create offers. Currently, only AppSource and Azure Application offers are supported.
 
 ## Prerequisites
 
