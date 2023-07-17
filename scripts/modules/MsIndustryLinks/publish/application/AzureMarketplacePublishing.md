@@ -8,7 +8,12 @@ Use the following steps to prepare your Azure Marketplace package and create an 
 
 See [Create a Microsoft Partner Center account](https://learn.microsoft.com/en-us/power-platform/developer/appsource/register-microsoft-partner-network) to create a Partner Center account.
 
-## Step 2. Associated an Azure AD application with your Partner Center account
+## Step 2. Install Required Tools
+
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
+- [Azure Partner Center CLI](https://github.com/microsoft/az-partner-center-cli)
+
+## Step 3. Associated an Azure AD application with your Partner Center account
 
 ### Onboard to the Partner Center API
 
@@ -19,11 +24,6 @@ See [Partner Center submission API onboarding](https://learn.microsoft.com/en-us
 ```
 az login --service-principal -u <CLIENT-ID> -p <CLIENT-SECRET> --tenant <TENANT-ID>
 ```
-
-## Step 3. Install Required Tools
-
-- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
-- [Azure Partner Center CLI](https://github.com/microsoft/az-partner-center-cli)
 
 ## Step 4. Generate the offer package for the Industry Link
 
