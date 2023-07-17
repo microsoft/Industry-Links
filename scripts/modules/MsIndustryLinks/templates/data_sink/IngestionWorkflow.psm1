@@ -83,7 +83,7 @@ function New-LogicAppIngestionWorkflow {
     $dataSinkType = $DataSinkConfig.type.ToLower()
 
     $definitionFileSuffix = $(if ($dataSinkType -eq "dataverse") { if ($DataSinkConfig.upsert) { "_upsert" } else { "_insert" } } else { "" })
-    $definition = Get-Content "$PSScriptRoot/templates/ingest/$dataSinkType/logicapp_$($dataSinkType)$($definitionFileSuffix).json" | ConvertFrom-Json
+    $definition = Get-Content "$PSScriptRoot/templates/data_sink/$dataSinkType/logicapp_$($dataSinkType)$($definitionFileSuffix).json" | ConvertFrom-Json
     $baseTemplate = Get-Content $PSScriptRoot/templates/logicapp_base.json | ConvertFrom-Json
 
     switch ($dataSinkType) {
@@ -216,7 +216,7 @@ function New-FlowCustomConnectorIngestionWorkflow {
     )
 
     $baseTemplate = Get-Content $PSScriptRoot/templates/flow_base.json | ConvertFrom-Json
-    $definition = Get-Content $PSScriptRoot/templates/ingest/customconnector/flow_customconnector.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/data_sink/customconnector/flow_customconnector.json | ConvertFrom-Json
 
     # Set variables based on whether the custom connector has been certified
     if ($DataSinkConfig.isCertified) {
@@ -320,7 +320,7 @@ function New-FlowDataverseIngestionWorkflow {
 
     $hasAlternateKeys = $parameters.alternate_keys?.value.length -gt 0
     $definitionFileSuffix = $(if ($useUpsert -and $hasAlternateKeys) { "upsert" } else { "insert" })
-    $definition = Get-Content $PSScriptRoot/templates/ingest/dataverse/flow_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
+    $definition = Get-Content $PSScriptRoot/templates/data_sink/dataverse/flow_dataverse_${definitionFileSuffix}.json | ConvertFrom-Json
 
     if (($null -eq $parameters.plural_table_name?.value) -or ($parameters.plural_table_name.value -eq "")) {
         throw "Parameters file is missing the 'plural_table_name' parameter."
