@@ -39,7 +39,7 @@ To create an Industry Link with a non-certified connector, an Azure AD applicati
 
 ### Configure package parameters
 
-Create a parameters file for the workflow packaging with the required parameters for your use case. See [package.parameters.json.tmpl](scripts/modules/MsIndustryLinks/templates/package/package.parameters.json.tmpl) for an example.
+Create a parameters file for the workflow packaging with the required parameters for your use case. See [package.parameters.json.tmpl](scripts/modules/MsIndustryLinks/package/powerPlatformSolution/package.parameters.json.tmpl) for an example.
 
 A Power Platform Solution Publisher is required to create the solution. Since the solution publisher specifies who developed the solution, you should create your own publisher instead of using the the default. A Solution Publisher includes a prefix, which is a mechanism to avoid naming collisions of components.
 

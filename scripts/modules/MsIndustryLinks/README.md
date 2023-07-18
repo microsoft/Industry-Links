@@ -25,4 +25,4 @@ The **MsIndustryLinks** module contains cmdlets to generate workflow templates (
 | [New-IngestionWorkflow](templates/data_sink/New-IngestionWorkflow.md)                      | Generate an ingestion workflow template                                               |
 | [New-MsIndustryLink](templates/New-MsIndustryLink.md)                                      | Generate a Microsoft Industry Link                                                    |
 | [New-TransformWorkflow](templates/data_transform/New-TransformWorkflow.md)                 | Generate a transform workflow template                                                |
-| [New-WorkflowPackage](templates/package/New-WorkflowPackage.md)                            | Package workflow templates into a solution                                            |
+| [New-WorkflowPackage](package/powerPlatformSolution/New-WorkflowPackage.md)                | Package workflow templates into a solution                                            |
