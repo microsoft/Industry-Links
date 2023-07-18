@@ -58,7 +58,7 @@ function New-AzureDeploymentPackage {
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('managedIdentityName'))]"
     )
 
-    $mainTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/azuredeploy.json" | ConvertFrom-Json
+    $mainTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/azuredeploy.json" | ConvertFrom-Json
     $mainTemplate.variables.managedIdentityName = "$($workflowName)User"
 
     $resourceTypes = @(
@@ -141,7 +141,7 @@ function New-BlobStorageTemplates {
     )
 
     try {
-        $deployTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/azureblobstorage/deploy.json" | ConvertFrom-Json
+        $deployTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/azureblobstorage/deploy.json" | ConvertFrom-Json
         $deployTemplate.variables.storageAccountName = $Parameters.storage_account_name.value
         $deployTemplate.variables.containerName = $Parameters.storage_container_name.value
         $deployTemplate | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/deploy.azureBlobStorage.json"
@@ -168,7 +168,7 @@ function New-BlobStorageTemplates {
         $connectionDependencies = @(
             "[resourceId('Microsoft.Resources/deployments', 'azureblobstorage')]"
         )
-        Copy-Item "$PSScriptRoot/azureDeploymentPackage/azureblobstorage/connection.json" "$OutputDirectory/connection.azureBlobStorage.json"
+        Copy-Item "$PSScriptRoot/package/azureDeploymentPackage/azureblobstorage/connection.json" "$OutputDirectory/connection.azureBlobStorage.json"
         $MainTemplate.resources += Get-LinkedTemplate -Name "azureblobstorageconnection" -FileName "connection.azureBlobStorage.json" -Dependencies $connectionDependencies
     }
     catch {
@@ -204,7 +204,7 @@ function New-CustomConnectorTemplates {
     }
 
     $fileName = "connection.$name.json"
-    $connectionTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/customconnector/$authType.connection.json" | ConvertFrom-Json
+    $connectionTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/customconnector/$authType.connection.json" | ConvertFrom-Json
     $connectionTemplate.variables.name = $properties.name
 
     $dependencies = @()
@@ -224,7 +224,7 @@ function New-CustomConnectorTemplates {
         }
 
         try {
-            $deployTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/customconnector/deploy.json" | ConvertFrom-Json
+            $deployTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/customconnector/deploy.json" | ConvertFrom-Json
             $deployTemplate.variables.name = $properties.name
             $deployTemplate.resources[0].properties.backendService.serviceUrl = "$($swaggerDefinition.schemes[0])://$($swaggerDefinition.host)$($swaggerDefinition.basePath)"
             $deployTemplate.resources[0].properties.swagger = $swaggerDefinition
@@ -274,11 +274,11 @@ function New-DataverseTemplates {
 
     try {
         $linkedTemplate = Get-LinkedTemplate -Name $connectionName -FileName "connection.dataverse.json"
-        $connectionTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/dataverse/connection.json" | ConvertFrom-Json
+        $connectionTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/dataverse/connection.json" | ConvertFrom-Json
         Add-ConnectionTemplateParameters -MainTemplate $MainTemplate -LinkedTemplate $linkedTemplate -Parameters $connectionTemplate.parameters
         $MainTemplate.resources += $linkedTemplate
 
-        Copy-Item "$PSScriptRoot/azureDeploymentPackage/dataverse/connection.json" "$OutputDirectory/connection.dataverse.json"
+        Copy-Item "$PSScriptRoot/package/azureDeploymentPackage/dataverse/connection.json" "$OutputDirectory/connection.dataverse.json"
     }
     catch {
         throw "Failed to add linked template for Dataverse connection."
@@ -298,7 +298,7 @@ function New-EventHubTemplates {
     )
 
     try {
-        $deployTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/eventhub/deploy.json" | ConvertFrom-Json
+        $deployTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/eventhub/deploy.json" | ConvertFrom-Json
         $deployTemplate.variables.eventHubNamespaceName = "$($WorkflowName)eh".ToLower()
         $deployTemplate.variables.eventHubName = $Parameters.event_hub_name.value
         $deployTemplate.variables.consumerGroupName = $Parameters.event_hub_parameters.value.consumerGroupName
@@ -326,7 +326,7 @@ function New-EventHubTemplates {
         $connectionDependencies = @(
             "[resourceId('Microsoft.Resources/deployments', 'eventhub')]"
         )
-        $connectionTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/eventhub/connection.json" | ConvertFrom-Json
+        $connectionTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/eventhub/connection.json" | ConvertFrom-Json
         $connectionTemplate.variables.eventHubNamespaceName = "$($WorkflowName)eh".ToLower()
         $connectionTemplate | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/connection.eventHub.json"
         $MainTemplate.resources += Get-LinkedTemplate -Name "eventhubconnection" -FileName "connection.eventHub.json" -Dependencies $connectionDependencies
@@ -354,7 +354,7 @@ function New-LogicAppTemplate {
 
     try {
         $logicAppTemplatePath = Join-Path $TemplateDirectory "$Name.json"
-        $deployTemplate = Get-Content "$PSScriptRoot/azureDeploymentPackage/logicApp/deploy.json" | ConvertFrom-Json
+        $deployTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/logicApp/deploy.json" | ConvertFrom-Json
         $resourceType = $SubWorkflowConfig.type.ToLower()
 
         if ("" -ne $resourceType) {
@@ -410,7 +410,7 @@ function New-CreateUiDefinition {
         [string] $OutputDirectory
     )
 
-    $uiDefinition = Get-Content "$PSScriptRoot/azureDeploymentPackage/createUiDefinition.json" | ConvertFrom-Json
+    $uiDefinition = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/createUiDefinition.json" | ConvertFrom-Json
 
     $ignoreParams = @("location", "_artifactsLocation", "_artifactsLocationSasToken")
     foreach ($param in $MainTemplate.parameters.PSObject.Properties) {
