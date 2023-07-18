@@ -27,7 +27,7 @@ az login --service-principal -u <CLIENT-ID> -p <CLIENT-SECRET> --tenant <TENANT-
 
 ## Step 4. Generate the offer package for the Industry Link
 
-See the cmdlet [New-AzureDeploymentPackage](../../azureDeploymentPackage/New-AzureDeploymentPackage.md) for more information on generating the offer package from the Industry Link Logic App workflow templates.
+See the cmdlet [New-AzureDeploymentPackage](../../package/azureDeploymentPackage/New-AzureDeploymentPackage.md) for more information on generating the offer package from the Industry Link Logic App workflow templates.
 
 Example:
 

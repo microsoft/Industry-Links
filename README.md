@@ -30,6 +30,7 @@ The templates, modules and scripts in this repository use a combination of the f
 - [Bicep](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/install#azure-cli)
 - [Python 3.6+](https://www.python.org/downloads/)
 - [azcopy](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10) (Mac users can use brew to install: `brew install azcopy`)
+- [Azure Partner Center CLI](https://github.com/microsoft/az-partner-center-cli)
 
 ### 3. Modify the template files
 

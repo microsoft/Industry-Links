@@ -77,7 +77,7 @@ az group create --name MyResourceGroup --location westus
 az storage account create -n mystorageacct -g MyResourceGroup -l westus --sku Standard_LRS
 ```
 
-The parameters.json file contains the parameters for the deployment. See [parameters.json.tmpl](scripts/modules/MsIndustryLinks/azureDeploymentPackage/parameters.json.tmpl) for an example of the format.
+The parameters.json file contains the parameters for the deployment. See [parameters.json.tmpl](scripts/modules/MsIndustryLinks/package/azureDeploymentPackage/parameters.json.tmpl) for an example of the format.
 
 ## Generate an Azure Marketplace application (solution template) offer in Partner Center
 
