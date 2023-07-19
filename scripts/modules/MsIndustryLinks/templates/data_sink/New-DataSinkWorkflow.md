@@ -1,13 +1,13 @@
-# New-IngestionWorkflow
+# New-DataSinkWorkflow
 
 Module: [MsIndustryLinks](../../README.md)
 
-Generates an ingestion workflow template. Supports Logic Apps and Power Automate Flows.
+Generates a data sink workflow template. Supports Logic Apps and Power Automate Flows.
 
 ## Syntax
 
 ```powershell
-New-IngestionWorkflow
+New-DataSinkWorkflow
     -WorkflowConfigFile <String>
     -OutputDirectory <String>
     [-AuthConfigFile] <String>
@@ -15,14 +15,14 @@ New-IngestionWorkflow
 
 ## Description
 
-Generates an ingestion workflow template that defines the data sink. This cmdlet will generate a Logic App or Power Automate Flow template. Specify the workflow type (Flow or LogicApp) in the workflow configuration file.
+Generates a data sink workflow template that will receive data. This function will generate a Logic App or Power Automate Flow template. Specify the workflow type (Flow or LogicApp) in the workflow configuration file.
 
 ## Examples
 
 ### Example 1: Generate a workflow template with Dataverse as the data sink
 
 ```powershell
-New-IngestionWorkflow
+New-DataSinkWorkflow
     -WorkflowConfigFile workflow.json
     -OutputDirectory output
 ```
@@ -30,7 +30,7 @@ New-IngestionWorkflow
 ### Example 2: Generate a workflow template with a non-certified custom connector as the data sink
 
 ```powershell
-New-IngestionWorkflow
+New-DataSinkWorkflow
     -WorkflowConfigFile workflow.json
     -OutputDirectory output
     -AuthConfigFile auth.json
@@ -49,7 +49,7 @@ The workflow configuration file that defines the trigger, the data source, the d
 
 ### -OutputDirectory
 
-The directory where the ingestion workflow template will be saved. If it doesn't exist, it will be created.
+The directory where the data sink workflow template will be saved. If it doesn't exist, it will be created.
 
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -65,7 +65,7 @@ See [auth.json.tmpl](../auth.json.tmpl) for an example.
 |                |                                                                                                                       |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Type:          | [String](https://learn.microsoft.com/en-us/powershell/scripting/lang-spec/chapter-04?view=powershell-7.3#431-strings) |
-| Default value: | None
+| Default value: | None                                                                                                                  |
 
 ## Inputs
 

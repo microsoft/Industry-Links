@@ -3,31 +3,41 @@
 
 <#
     .Synopsis
-    Generates an ingestion workflow template. Supports Logic Apps and
+    Generates a data sink workflow template. Supports Logic Apps and
     Power Automate Flows.
 
     .Description
-    Generates an ingestion workflow template that will insert or upsert data
-    into a Dataverse table. This function will generate a Logic App or Power
-    Automate Flow template. Specify the workflow type (Flow or LogicApp)
-    in the workflow configuration file.
+    Generates a data sink workflow template that will receive data.
+    This function will generate a Logic App or Power Automate Flow
+    template. Specify the workflow type (Flow or LogicApp) in the
+    workflow configuration file.
 
     .Parameter WorkflowConfigFile
     The workflow configuration file that defines the trigger, the data
     source, the data sink and any transformations that will be applied.
 
     .Parameter OutputDirectory
-    The directory where the ingestion workflow template will be saved. If it
-    doesn't exist, it will be created.
+    The directory where the data sink workflow template will be saved.
+    If it doesn't exist, it will be created.
+
+    .Parameter AuthConfigFile
+    The path to the authentication configuration JSON file. This file
+    is only required if the data source is a non-certified custom connector.
+    Provide the tenantId, clientId, clientSecret, and orgWebApiUrl for the
+    service principal that will be used to authenticate with the Dataverse
+    API.
 
     .OUTPUTS
     A Hashtable containing the name and GUID of the workflow template.
 
     .Example
-    # Generate a workflow template to ingest data.
-    New-IngestionWorkflow -WorkflowConfigFile workflow.json -OutputDirectory output
+    # Generate a workflow template with Dataverse as the data sink
+    New-DataSinkWorkflow -WorkflowConfigFile workflow.json -OutputDirectory output
+
+    # Generate a workflow template with a non-certified custom connector as the data sink
+    New-DataSinkWorkflow -WorkflowConfigFile workflow.json -OutputDirectory output -AuthConfigFile auth.json
 #>
-function New-IngestionWorkflow {
+function New-DataSinkWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
@@ -380,4 +390,4 @@ function New-FlowDataverseIngestionWorkflow {
     return $baseTemplate
 }
 
-Export-ModuleMember -Function New-IngestionWorkflow
+Export-ModuleMember -Function New-DataSinkWorkflow
