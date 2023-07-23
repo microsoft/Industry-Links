@@ -1,0 +1,34 @@
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License.
+name: Pull Request
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+jobs:
+  Run-PSScriptAnalyzer:
+    name: Install and run PSScriptAnalyzer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install PSScriptAnalyzer module
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -ErrorAction Stop
+      - name: Install ConvertToSARIF
+        shell: pwsh
+        run: |
+          Install-Module -Name ConvertToSARIF -Force
+      - name: Lint with PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Import-Module -Name ConvertToSARIF -Force
+          Invoke-ScriptAnalyzer -Path scripts -Recurse | ConvertTo-SARIF -FilePath results.sarif
+      - name: Upload SARIF results file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: results.sarif
