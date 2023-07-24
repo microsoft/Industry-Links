@@ -39,6 +39,7 @@
     New-AppSourceOffer -ProviderName Contoso -ConfigFile config.json -SolutionZip ContosoIndustryLink.zip -AppSourceAssets assets -StorageAccount mystorageaccount -StorageContainer appsource-packages
 #>
 function New-AppSourceOffer {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
         [string] $ProviderName,
@@ -68,7 +69,7 @@ function New-AppSourceOffer {
     Update-Offer -AccessToken $accessToken -AppSourceAssets $AppSourceAssets -PackageUri $packageUri
 }
 
-function Join-Objects {
+function Join-Object {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "Source object to copy properties from.")]
         [object] $Source,
@@ -161,9 +162,11 @@ function Get-ModuleInstanceId {
         [string] $PlanId = ""
     )
 
+    $variantId = $PlanId -eq "" ? $null : $PlanId
+
     try {
         $response = Send-ApiRequest -Uri "products/$OfferGuid/branches/getByModule(module=$Module)" -AccessToken $AccessToken
-        $instanceId = $response.value | Where-Object { ($PlanId -eq "" ? $null : $PlanId) -eq $_.variantID } | Select-Object -First 1 -ExpandProperty currentDraftInstanceID
+        $instanceId = $response.value | Where-Object { $variantId -eq $_.variantID } | Select-Object -First 1 -ExpandProperty currentDraftInstanceID
         return $instanceId
     }
     catch {
@@ -171,7 +174,7 @@ function Get-ModuleInstanceId {
     }
 }
 
-function Add-ListingAssets {
+function Add-ListingAsset {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The GUID of the offer to add the listing assets for.")]
         [string] $OfferGuid,
@@ -237,7 +240,8 @@ function Add-ListingAssets {
     }
 }
 
-function Remove-ListingAssets {
+function Remove-ListingAsset {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The GUID of the offer to add the listing assets for.")]
         [string] $OfferGuid,
@@ -253,7 +257,9 @@ function Remove-ListingAssets {
         $assets = (Send-ApiRequest -Uri "$listingBaseUri/$assetType" -AccessToken $AccessToken).value
         foreach ($asset in $assets) {
             try {
-                Send-ApiRequest -Method Delete -Uri "$listingBaseUri/$assetType/$($asset.id)" -AccessToken $AccessToken | Out-Null
+                if ($PSCmdlet.ShouldProcess("$assetType/$($asset.id)", "Removing listing asset")) {
+                    Send-ApiRequest -Method Delete -Uri "$listingBaseUri/$assetType/$($asset.id)" -AccessToken $AccessToken | Out-Null
+                }
             }
             catch {
                 throw "There was an issue removing the listing $assetType with ID $($asset.id). Error: $($_.Exception.Message)"
@@ -263,6 +269,7 @@ function Remove-ListingAssets {
 }
 
 function Update-Offer {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "Partner Ingestion API access token.")]
         [string] $AccessToken,
@@ -300,13 +307,14 @@ function Update-Offer {
         throw "There was an issue updating the product setup. Error: $($_.Exception.Message)"
     }
 
-    Set-OfferProperties -OfferGuid $offerGuid -AccessToken $AccessToken -OfferProperties $offerConfig.property
+    Set-OfferProperty -OfferGuid $offerGuid -AccessToken $AccessToken -OfferProperties $offerConfig.property
     Set-OfferListing -OfferGuid $offerGuid -AccessToken $AccessToken -OfferListing $offerConfig.listing -OfferListingAssets $offerConfig.listingAssets -OfferListingAssetsPath $listingAssetsPath
     Set-OfferAvailability -OfferGuid $offerGuid -AccessToken $AccessToken -OfferAvailability $offerConfig.featureAvailability
     Set-OfferTechnicalConfiguration -OfferGuid $offerGuid -AccessToken $AccessToken -OfferPackageConfig $offerConfig.packageConfiguration -PackageUri $PackageUri
 }
 
-function Set-OfferProperties {
+function Set-OfferProperty {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The GUID of the offer to update.")]
         [string] $OfferGuid,
@@ -320,13 +328,15 @@ function Set-OfferProperties {
         $propertiesBaseUri = "products/$OfferGuid/properties"
         $instanceId = Get-ModuleInstanceId -AccessToken $AccessToken -OfferGuid $OfferGuid -Module "Property"
         $properties = (Send-ApiRequest -Uri "$propertiesBaseUri/getByInstanceID(instanceID=$instanceId)" -AccessToken $AccessToken).value[0]
-        Join-Objects -Source $OfferProperties -Target $properties
+        Join-Object -Source $OfferProperties -Target $properties
         $propertiesBody = $properties | ConvertTo-Json -Depth 10
 
         $putHeaders = @{
             "If-Match" = $properties.'@odata.etag'
         }
-        Send-ApiRequest -Method Put -Uri "$propertiesBaseUri/$($properties.id)" -AccessToken $AccessToken -Headers $putHeaders -Body $propertiesBody | Out-Null
+        if ($PSCmdlet.ShouldProcess($properties.id, "Updating offer properties")) {
+            Send-ApiRequest -Method Put -Uri "$propertiesBaseUri/$($properties.id)" -AccessToken $AccessToken -Headers $putHeaders -Body $propertiesBody | Out-Null
+        }
     }
     catch {
         throw "There was an issue updating the product properties. Error: $($_.Exception.Message)"
@@ -334,6 +344,7 @@ function Set-OfferProperties {
 }
 
 function Set-OfferListing {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The GUID of the offer to update.")]
         [string] $OfferGuid,
@@ -351,24 +362,27 @@ function Set-OfferListing {
         $listingBaseUri = "products/$OfferGuid/listings"
         $instanceId = Get-ModuleInstanceId -AccessToken $AccessToken -OfferGuid $OfferGuid -Module "Listing"
         $listing = (Send-ApiRequest -Uri "$listingBaseUri/getByInstanceID(instanceID=$instanceId)" -AccessToken $AccessToken).value[0]
-        Join-Objects -Source $OfferListing -Target $listing
+        Join-Object -Source $OfferListing -Target $listing
         $listingBody = $listing | ConvertTo-Json -Depth 10
 
         $putHeaders = @{
             "If-Match" = $listing.'@odata.etag'
         }
-        Send-ApiRequest -Method Put -Uri "$listingBaseUri/$($listing.id)" -AccessToken $AccessToken -Headers $putHeaders -Body $listingBody | Out-Null
+        if ($PSCmdlet.ShouldProcess($listing.id, "Updating offer listing")) {
+            Send-ApiRequest -Method Put -Uri "$listingBaseUri/$($listing.id)" -AccessToken $AccessToken -Headers $putHeaders -Body $listingBody | Out-Null
+        }
     }
     catch {
         throw "There was an issue updating the product listing. Error: $($_.Exception.Message)"
     }
 
     # Add listing assets, images, and videos
-    Remove-ListingAssets -OfferGuid $OfferGuid -ListingGuid $listing.id -AccessToken $AccessToken
-    Add-ListingAssets -OfferGuid $OfferGuid -ListingGuid $listing.id -AccessToken $AccessToken -ListingAssetsPath $OfferListingAssetsPath -ListingAssets $OfferListingAssets
+    Remove-ListingAsset -OfferGuid $OfferGuid -ListingGuid $listing.id -AccessToken $AccessToken
+    Add-ListingAsset -OfferGuid $OfferGuid -ListingGuid $listing.id -AccessToken $AccessToken -ListingAssetsPath $OfferListingAssetsPath -ListingAssets $OfferListingAssets
 }
 
 function Set-OfferAvailability {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The GUID of the offer to update.")]
         [string] $OfferGuid,
@@ -382,13 +396,15 @@ function Set-OfferAvailability {
         $availabilityBaseUri = "products/$OfferGuid/featureAvailabilities"
         $instanceId = Get-ModuleInstanceId -AccessToken $AccessToken -OfferGuid $OfferGuid -Module "Availability"
         $availability = (Send-ApiRequest -Uri "$availabilityBaseUri/getByInstanceID(instanceID=$instanceId)?`$expand=MarketStates,PriceSchedule,Trial" -AccessToken $AccessToken).value[0]
-        Join-Objects -Source $OfferAvailability -Target $availability
+        Join-Object -Source $OfferAvailability -Target $availability
         $availabilityBody = $availability | ConvertTo-Json -Depth 10
 
         $putHeaders = @{
             "If-Match" = $availability.'@odata.etag'
         }
-        Send-ApiRequest -Method Put -Uri "$availabilityBaseUri/$($availability.id)?`$expand=MarketStates,PriceSchedule,Trial" -AccessToken $AccessToken -Headers $putHeaders -Body $availabilityBody | Out-Null
+        if ($PSCmdlet.ShouldProcess($availability.id, "Updating offer availability")) {
+            Send-ApiRequest -Method Put -Uri "$availabilityBaseUri/$($availability.id)?`$expand=MarketStates,PriceSchedule,Trial" -AccessToken $AccessToken -Headers $putHeaders -Body $availabilityBody | Out-Null
+        }
     }
     catch {
         throw "There was an issue updating the product feature availabilities. Error: $($_.Exception.Message)"
@@ -396,6 +412,7 @@ function Set-OfferAvailability {
 }
 
 function Set-OfferTechnicalConfiguration {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The GUID of the offer to update.")]
         [string] $OfferGuid,
@@ -411,14 +428,16 @@ function Set-OfferTechnicalConfiguration {
         $packageBaseUri = "products/$OfferGuid/packageConfigurations"
         $instanceId = Get-ModuleInstanceId -AccessToken $AccessToken -OfferGuid $OfferGuid -Module "Package"
         $packageConfiguration = (Send-ApiRequest -Uri "$packageBaseUri/getByInstanceID(instanceID=$instanceId)" -AccessToken $AccessToken).value[0]
-        Join-Objects -Source $OfferPackageConfig -Target $packageConfiguration
+        Join-Object -Source $OfferPackageConfig -Target $packageConfiguration
         $packageConfiguration | Add-Member -MemberType NoteProperty -Name "packageLocationUri" -Value $PackageUri -Force
         $packageConfigBody = $packageConfiguration | ConvertTo-Json -Depth 10
 
         $putHeaders = @{
             "If-Match" = $packageConfiguration.'@odata.etag'
         }
-        Send-ApiRequest -Method Put -Uri "$packageBaseUri/$($packageConfiguration.id)" -AccessToken $AccessToken -Headers $putHeaders -Body $packageConfigBody | Out-Null
+        if ($PSCmdlet.ShouldProcess($packageConfiguration.id, "Updating offer technical configuration")) {
+            Send-ApiRequest -Method Put -Uri "$packageBaseUri/$($packageConfiguration.id)" -AccessToken $AccessToken -Headers $putHeaders -Body $packageConfigBody | Out-Null
+        }
     }
     catch {
         throw "There was an issue updating the product package configuration. Error: $($_.Exception.Message)"
@@ -449,6 +468,7 @@ function Set-OfferTechnicalConfiguration {
     New-AppSourcePackage -ProviderName Contoso -SolutionZip ContosoIndustryLink.zip -AppSourceAssets assets
 #>
 function New-AppSourcePackage {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
         [string] $ProviderName,
