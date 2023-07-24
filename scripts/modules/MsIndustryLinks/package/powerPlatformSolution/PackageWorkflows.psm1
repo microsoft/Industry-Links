@@ -27,6 +27,7 @@
     New-WorkflowPackage -ParametersFile parameters.json -TemplateDirectory output -OutputDirectory output/solution
 #>
 function New-WorkflowPackage {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the parameters JSON file.")]
         [string] $ParametersFile,
@@ -40,6 +41,7 @@ function New-WorkflowPackage {
 }
 
 function New-WorkflowsIntoSolution {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path of the workflow assets to be packaged.")]
         [string] $WorkflowAssetsPath,
@@ -54,7 +56,7 @@ function New-WorkflowsIntoSolution {
 
     $solutionName = (Get-Content $ParametersFile | ConvertFrom-Json).solutionName
     $packageType = (Get-Content $ParametersFile | ConvertFrom-Json).packageType
-    $solutionAssetsPath = Join-Path $OutputDirectory $solutionName "src"
+    $solutionAssetsPath = Join-Path -Path $OutputDirectory $solutionName "src"
 
     # Create the Workflows folder
     $workflowsPath = Join-Path $solutionAssetsPath "Workflows"
@@ -73,6 +75,7 @@ function New-WorkflowsIntoSolution {
 }
 
 function New-FlowReferenceInSolution {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path of the solution assets.")]
         [string] $SolutionAssetsPath,
@@ -96,7 +99,7 @@ function New-FlowReferenceInSolution {
         $solutionXml = New-Object xml
         $solutionXml.Load((Convert-Path $solutionXmlPath))
 
-        $rootComponentElement = New-SolutionXmlRootComponentElement -SolutionXml $solutionXml -FlowGuid $FlowGuid
+        $rootComponentElement = Add-SolutionXmlRootComponentElement -SolutionXml $solutionXml -FlowGuid $FlowGuid
         $rootComponents = $solutionXml.SelectSingleNode("//RootComponents")
         $rootComponents.AppendChild($rootComponentElement) | Out-Null
         $solutionXml.Save((Convert-Path $solutionXmlPath))
@@ -108,7 +111,7 @@ function New-FlowReferenceInSolution {
 
     try {
         # Add workflows configuration to solution assets
-        $solutionWorkflowPath = Join-Path $SolutionAssetsPath "Workflows" (Split-Path $FlowWorkflowTemplatePath -Leaf)
+        $solutionWorkflowPath = Join-Path -Path $SolutionAssetsPath "Workflows" (Split-Path $FlowWorkflowTemplatePath -Leaf)
         Copy-Item $FlowWorkflowTemplatePath $solutionWorkflowPath
 
     }
@@ -124,7 +127,7 @@ function New-FlowReferenceInSolution {
         $customizationsXml = New-Object xml
         $customizationsXml.Load((Convert-Path $customizationsPath))
 
-        $workflowElement = New-CustomizationsXmlWorkflowElement -CustomizationsXml $customizationsXml -FlowGuid $FlowGuid -FlowName $FlowName
+        $workflowElement = Add-CustomizationsXmlWorkflowElement -CustomizationsXml $customizationsXml -FlowGuid $FlowGuid -FlowName $FlowName
         $workflowsElement = $customizationsXml.SelectSingleNode("//Workflows")
         $workflowsElement.AppendChild($workflowElement) | Out-Null
 
@@ -148,7 +151,7 @@ function New-FlowReferenceInSolution {
             if (($customizationsXml.SelectNodes($connectionSearchString)).Count -eq 0) {
                 $connectorId = "/providers/Microsoft.PowerApps/apis/$($connectionReference.api.name)"
 
-                $customConnectionElement = New-CustomizationsXmlCustomConnectorElement -CustomizationsXml $customizationsXml -ConnectionReferenceLogicalName $connectionReferenceLogicalName -ConnectionReferenceDisplayName $connectionReferenceLogicalName -ConnectorId $connectorId
+                $customConnectionElement = Add-CustomizationsXmlCustomConnectorElement -CustomizationsXml $customizationsXml -ConnectionReferenceLogicalName $connectionReferenceLogicalName -ConnectionReferenceDisplayName $connectionReferenceLogicalName -ConnectorId $connectorId
                 $customConnectionsElement = $customizationsXml.SelectSingleNode("//connectionreferences")
                 $customConnectionsElement.AppendChild($customConnectionElement) | Out-Null
             }
@@ -163,6 +166,7 @@ function New-FlowReferenceInSolution {
 }
 
 function New-Solution {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The directory path where the workflow template will be saved.")]
         [string] $OutputDirectory,
@@ -188,7 +192,7 @@ function New-Solution {
     }
 }
 
-function New-SolutionXmlRootComponentElement {
+function Add-SolutionXmlRootComponentElement {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The solution XML document.")]
         [xml] $SolutionXml,
@@ -204,7 +208,7 @@ function New-SolutionXmlRootComponentElement {
     return $rootComponentElement
 }
 
-function New-CustomizationsXmlWorkflowElement {
+function Add-CustomizationsXmlWorkflowElement {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The customizations XML document.")]
         [xml] $CustomizationsXml,
@@ -310,7 +314,7 @@ function New-CustomizationsXmlWorkflowElement {
     return $workflowElement
 }
 
-function New-CustomizationsXmlCustomConnectorElement {
+function Add-CustomizationsXmlCustomConnectorElement {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The customizations XML document.")]
         [xml] $CustomizationsXml,

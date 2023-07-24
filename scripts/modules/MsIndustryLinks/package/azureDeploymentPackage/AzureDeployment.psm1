@@ -36,6 +36,7 @@
     New-AzureDeployment -ResourceGroup contoso-rg -Location eastus -TemplatesFolder templates -ParametersFile parameters.json -StorageAccountName mystorageaccount
 #>
 function New-AzureDeployment {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $True, HelpMessage = "Resource group where Azure resources are deployed to.")]
         [String] $ResourceGroup,
@@ -54,23 +55,19 @@ function New-AzureDeployment {
 
     # Validate input parameters
     if ($ResourceGroup -notmatch $resourceGroupNameRegex) {
-        Write-Error "Please provide a valid Resource Group Name."
-        Exit 1
+        throw "Please provide a valid Resource Group Name."
     }
 
     if ($Location -notmatch $regionRegex) {
-        Write-Error "Please provide a valid region."
-        Exit 1
+        throw "Please provide a valid region."
     }
 
     if (-not(Test-Path $TemplatesFolder)) {
-        Write-Error "Please provide a valid assets folder path."
-        Exit 1
+        throw "Please provide a valid assets folder path."
     }
 
     if (-not(Test-Path $ParametersFile)) {
-        Write-Error "Please provide a valid parameters file path."
-        Exit 1
+        throw "Please provide a valid parameters file path."
     }
 
     $workingDirectory = Get-Item .
@@ -82,8 +79,10 @@ function New-AzureDeployment {
         Set-Location $TemplatesFolder
 
         # Deploy
-        Write-Output "Deploying to $ResourceGroup in $Location using parameters from $ParametersFile..."
-        az group create -n $ResourceGroup -l $Location --output none
+        if ($PSCmdlet.ShouldProcess($ResourceGroup)) {
+            Write-Output "Deploying to $ResourceGroup in $Location using parameters from $ParametersFile..."
+            az group create -n $ResourceGroup -l $Location --output none
+        }
 
         $armParameters = (Get-Content -Path mainTemplate.json -Raw | ConvertFrom-Json).parameters
         if ($null -ne $armParameters._artifactsLocation) {
