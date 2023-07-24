@@ -38,6 +38,8 @@
     New-DataSinkWorkflow -WorkflowConfigFile workflow.json -OutputDirectory output -AuthConfigFile auth.json
 #>
 function New-DataSinkWorkflow {
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([System.Collections.Hashtable])]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
@@ -56,7 +58,7 @@ function New-DataSinkWorkflow {
 
     $templateGuid = ""
     if ($workflowType -eq "logicapp") {
-        $template = New-LogicAppIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink
+        $template = Get-LogicAppIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink
         $templateName = "$($workflowConfig.name)_Sink"
     }
     elseif ($workflowType -eq "flow") {
@@ -64,7 +66,7 @@ function New-DataSinkWorkflow {
             throw "No data sink workflow name was specified. Please specify a name."
         }
 
-        $template = New-FlowIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink -AuthConfigFile $AuthConfigFile
+        $template = Get-FlowIngestionWorkflow -DataSinkConfig $workflowConfig.dataSink -AuthConfigFile $AuthConfigFile
         $templateGuid = $template.name
         $templateName = $template.properties.displayName
     }
@@ -72,11 +74,13 @@ function New-DataSinkWorkflow {
         throw "The workflow type, $($workflowConfig.workflowType), is not supported. Please choose from: Flow, LogicApp."
     }
 
-    # Save the workflow template to the output directory. Create directory if it doesn't exist.
-    if (!(Test-Path $OutputDirectory)) {
-        New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+    if ($PSCmdlet.ShouldProcess("$OutputDirectory/$templateName.json", "Generating Industry Link data sink template")) {
+        # Save the workflow template to the output directory. Create directory if it doesn't exist.
+        if (!(Test-Path $OutputDirectory)) {
+            New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+        }
+        $template | ConvertTo-Json -Depth 20 | Out-File "$OutputDirectory/$templateName.json"
     }
-    $template | ConvertTo-Json -Depth 20 | Out-File "$OutputDirectory/$templateName.json"
 
     return @{
         name = $templateName
@@ -84,7 +88,7 @@ function New-DataSinkWorkflow {
     }
 }
 
-function New-LogicAppIngestionWorkflow {
+function Get-LogicAppIngestionWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
         [object] $DataSinkConfig
@@ -100,7 +104,7 @@ function New-LogicAppIngestionWorkflow {
         "customconnector" {
             $apiName = $DataSinkConfig.properties.name
             $apiId = Get-LogicAppApiId -DataSourceType $dataSinkType -ApiName $apiName -IsCustomConnectorCertified $DataSinkConfig.isCertified
-            Set-LogicAppCustomConnectorDataSinkConfiguration -DataSinkConfig $DataSinkConfig -Definition $definition
+            Add-LogicAppCustomConnectorDataSinkConfiguration -DataSinkConfig $DataSinkConfig -Definition $definition
         }
         "dataverse" {
             $apiName = Get-ApiName -DataSourceType $dataSinkType
@@ -134,7 +138,7 @@ function New-LogicAppIngestionWorkflow {
     return $baseTemplate
 }
 
-function Set-LogicAppCustomConnectorDataSinkConfiguration {
+function Add-LogicAppCustomConnectorDataSinkConfiguration {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
         [object] $DataSinkConfig,
@@ -188,7 +192,7 @@ function Set-LogicAppCustomConnectorDataSinkConfiguration {
     }
 }
 
-function New-FlowIngestionWorkflow {
+function Get-FlowIngestionWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
         [object] $DataSinkConfig,
@@ -201,10 +205,10 @@ function New-FlowIngestionWorkflow {
     # Configure the data sink
     switch ($dataSink) {
         "customconnector" {
-            $template = New-FlowCustomConnectorIngestionWorkflow -DataSinkConfig $DataSinkConfig -AuthConfigFile $AuthConfigFile
+            $template = Get-FlowCustomConnectorIngestionWorkflow -DataSinkConfig $DataSinkConfig -AuthConfigFile $AuthConfigFile
         }
         "dataverse" {
-            $template = New-FlowDataverseIngestionWorkflow -DataSinkConfig $DataSinkConfig
+            $template = Get-FlowDataverseIngestionWorkflow -DataSinkConfig $DataSinkConfig
         }
         default {
             throw "The data sink type, $($DataSinkConfig.type), is not supported. Please choose from: CustomConnector, Dataverse."
@@ -217,7 +221,7 @@ function New-FlowIngestionWorkflow {
     return $template
 }
 
-function New-FlowCustomConnectorIngestionWorkflow {
+function Get-FlowCustomConnectorIngestionWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
         [object] $DataSinkConfig,
@@ -317,7 +321,7 @@ function New-FlowCustomConnectorIngestionWorkflow {
     return $baseTemplate
 }
 
-function New-FlowDataverseIngestionWorkflow {
+function Get-FlowDataverseIngestionWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The data sink workflow configuration object.")]
         [object] $DataSinkConfig

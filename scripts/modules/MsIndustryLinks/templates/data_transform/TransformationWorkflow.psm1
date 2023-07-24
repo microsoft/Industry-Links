@@ -28,6 +28,8 @@
     New-TransformWorkflow -WorkflowConfigFile workflow.json -OutputDirectory output
 #>
 function New-TransformWorkflow {
+    [CmdletBinding(SupportsShouldProcess)]
+    [OutputType([System.Collections.Hashtable])]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
