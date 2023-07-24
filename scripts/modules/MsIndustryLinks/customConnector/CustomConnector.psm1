@@ -18,17 +18,19 @@
     New-CustomConnector -CustomConnectorAssets output/ContosoCustomConnector
 #>
 function New-CustomConnector {
+    [CmdletBinding(SupportsShouldProcess)]
     Param (
         [Parameter(Mandatory = $true, HelpMessage = "The path containing the custom connector assets")]
         [string] $CustomConnectorAssets
     )
 
     try {
-        pac connector create --settings-file "$CustomConnectorAssets/settings.json"
+        if ($PSCmdlet.ShouldProcess($CustomConnectorAssets)) {
+            pac connector create --settings-file "$CustomConnectorAssets/settings.json"
+        }
     }
     catch {
         Write-Error "An error occurred while creating the custom connector: $($_.Exception.Message)"
-        Exit 1
     }
 }
 
@@ -54,6 +56,7 @@ function New-CustomConnector {
     New-CustomConnectorConfig -ConfigFile config.json -OutputDirectory output
 #>
 function New-CustomConnectorConfig {
+    [CmdletBinding(SupportsShouldProcess)]
     Param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the configuration file.")]
         [string] $ConfigFile,
@@ -63,37 +66,38 @@ function New-CustomConnectorConfig {
     try {
         $config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
 
-        if (!(Test-Path $OutputDirectory)) {
-            New-Item -Name $OutputDirectory -ItemType Directory | Out-Null
-        }
+        if ($PSCmdlet.ShouldProcess($ConfigFile)) {
+            if (!(Test-Path $OutputDirectory)) {
+                New-Item -Name $OutputDirectory -ItemType Directory | Out-Null
+            }
 
-        pac connector init --outputDirectory $OutputDirectory --generate-settings-file | Out-Null
-    
-        # Copy the API definition to the output directory
-        Copy-Item $config.apiDefinition "$OutputDirectory/apiDefinition.json"
-    
-        # Configure the authentication model of the API using the API definition
-        Configure-AuthenticationOptions -ConnectorAssetsPath $OutputDirectory -ConfigFile $ConfigFile
-    
-        $iconFile = $config.icon
-        if (Test-Path $iconFile) {
-            # Copy the icon to the output directory and update the settings file
-            Copy-Item $iconFile "$OutputDirectory/icon.png"
-            $settings = (Get-Content "$OutputDirectory/settings.json" -Raw | ConvertFrom-Json)
-            $settings.icon = "icon.png"
-            $settings | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/settings.json" -Force
-        }
-        else {
-            throw "Icon file not found at $iconFile"
+            pac connector init --outputDirectory $OutputDirectory --generate-settings-file | Out-Null
+
+            # Copy the API definition to the output directory
+            Copy-Item $config.apiDefinition "$OutputDirectory/apiDefinition.json"
+
+            # Configure the authentication model of the API using the API definition
+            Set-AuthenticationConfig -ConnectorAssetsPath $OutputDirectory -ConfigFile $ConfigFile
+
+            $iconFile = $config.icon
+            if (Test-Path $iconFile) {
+                # Copy the icon to the output directory and update the settings file
+                Copy-Item $iconFile "$OutputDirectory/icon.png"
+                $settings = (Get-Content "$OutputDirectory/settings.json" -Raw | ConvertFrom-Json)
+                $settings.icon = "icon.png"
+                $settings | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/settings.json" -Force
+            }
+            else {
+                throw "Icon file not found at $iconFile"
+            }
         }
     }
     catch {
         Write-Error "An error occurred while configuring the custom connector files: $($_.Exception.Message)"
-        Exit 1
     }
 }
 
-function Get-ApiKeyConnectionParameters {
+function Get-ApiKeyConnectionParameter {
     return @{
         "api_key" = @{
             "type"         = "securestring"
@@ -111,7 +115,7 @@ function Get-ApiKeyConnectionParameters {
     }
 }
 
-function Get-BasicAuthConnectionParameters {
+function Get-BasicAuthConnectionParameter {
     return @{
         "username" = @{
             "type"         = "securestring"
@@ -142,7 +146,7 @@ function Get-BasicAuthConnectionParameters {
     }
 }
 
-function Get-AadAccessCodeConnectionParameters {
+function Get-AadAccessCodeConnectionParameter {
     param (
         [string] $clientId,
         [string] $scopes,
@@ -194,7 +198,7 @@ function Get-AadAccessCodeConnectionParameters {
     }
 }
 
-function Get-GenericOAuthAccessCodeConnectionParameters {
+function Get-GenericOAuthAccessCodeConnectionParameter {
     param (
         [string] $clientId,
         [string] $scopes,
@@ -232,7 +236,7 @@ function Get-GenericOAuthAccessCodeConnectionParameters {
     }
 }
 
-function Get-GenericOAuthClientCredentialsConnectionParameters {
+function Get-GenericOAuthClientCredentialsConnectionParameter {
     return @{
         "clientId"     = @{
             "type"         = "string"
@@ -262,7 +266,7 @@ function Get-GenericOAuthClientCredentialsConnectionParameters {
     }
 }
 
-function Get-GenericOAuthClientCredentialsPolicyTemplates {
+function Get-GenericOAuthClientCredentialsPolicyTemplate {
     param (
         [string] $tokenUrl,
         [string[]] $scopes
@@ -315,7 +319,8 @@ function Get-GenericOAuthClientCredentialsPolicyTemplates {
     return $policyTemplateInstances
 }
 
-function Configure-AuthenticationOptions {
+function Set-AuthenticationConfig {
+    [CmdletBinding(SupportsShouldProcess)]
     Param(
         [string] $ConnectorAssetsPath,
         [string] $ConfigFile
@@ -332,10 +337,10 @@ function Configure-AuthenticationOptions {
     # Set the connection parameters based on the authentication model of the API
     switch ($securityDefinition.PSObject.Properties.Value.type) {
         "apiKey" {
-            $connectionParameters = Get-ApiKeyConnectionParameters
+            $connectionParameters = Get-ApiKeyConnectionParameter
         }
         "basic" {
-            $connectionParameters = Get-BasicAuthConnectionParameters
+            $connectionParameters = Get-BasicAuthConnectionParameter
         }
         "oauth2" {
             # Get OAuth 2.0 values from API definition
@@ -356,19 +361,19 @@ function Configure-AuthenticationOptions {
                 $isAad = (($apiDefintionAuth.authorizationUrl -like "*login.microsoftonline.com*") -or ($apiDefintionAuth.tokenUrl -like "*login.microsoftonline.com*"))
 
                 if ($isAad) {
-                    $connectionParameters = Get-AadAccessCodeConnectionParameters -clientId $oauthConfig.clientId -scopes $scopes -resourceUri $oauthConfig.resourceUri -tenantId $oauthConfig.tenantId
+                    $connectionParameters = Get-AadAccessCodeConnectionParameter -clientId $oauthConfig.clientId -scopes $scopes -resourceUri $oauthConfig.resourceUri -tenantId $oauthConfig.tenantId
 
                 }
                 else {
-                    $connectionParameters = Get-GenericOAuthAccessCodeConnectionParameters -clientId $oauthConfig.clientId -scopes $scopes -authorizationUrl $apiDefintionAuth.authorizationUrl -tokenUrl $apiDefintionAuth.tokenUrl -refreshUrl $apiDefintionAuth.refreshUrl
+                    $connectionParameters = Get-GenericOAuthAccessCodeConnectionParameter -clientId $oauthConfig.clientId -scopes $scopes -authorizationUrl $apiDefintionAuth.authorizationUrl -tokenUrl $apiDefintionAuth.tokenUrl -refreshUrl $apiDefintionAuth.refreshUrl
                 }
 
                 # Swagger 2.0 specification calls the client credentials flow "application" flow
             }
             elseif ($apiDefintionAuth.flow -eq "application") {
-                $connectionParameters = Get-GenericOAuthClientCredentialsConnectionParameters
+                $connectionParameters = Get-GenericOAuthClientCredentialsConnectionParameter
 
-                $policyTemplateInstances = Get-GenericOAuthClientCredentialsPolicyTemplates -tokenUrl $apiDefintionAuth.tokenUrl -scopes $scopes
+                $policyTemplateInstances = Get-GenericOAuthClientCredentialsPolicyTemplate -tokenUrl $apiDefintionAuth.tokenUrl -scopes $scopes
 
                 $customCodePath = "$PSScriptRoot/customConnector/assets/clientCredentialsAuthFlow.csx"
             }
@@ -392,15 +397,17 @@ function Configure-AuthenticationOptions {
     }
 
     # Output the new API properties configuration to the output directory
-    $apiProperties | ConvertTo-Json -Depth 100 | Out-File $apiPropertiesPath -Force
+    if ($PSCmdlet.ShouldProcess($ConfigFile)) {
+        $apiProperties | ConvertTo-Json -Depth 100 | Out-File $apiPropertiesPath -Force
 
-    # Update the output settings.json to point to custom code if exists
-    if ($customCodePath) {
-        $settings = (Get-Content "$ConnectorAssetsPath/settings.json" -Raw | ConvertFrom-Json)
-        $settings.script = "script.csx"
-        $settings | ConvertTo-Json -Depth 100 | Out-File "$ConnectorAssetsPath/settings.json" -Force
+        # Update the output settings.json to point to custom code if exists
+        if ($customCodePath) {
+            $settings = (Get-Content "$ConnectorAssetsPath/settings.json" -Raw | ConvertFrom-Json)
+            $settings.script = "script.csx"
+            $settings | ConvertTo-Json -Depth 100 | Out-File "$ConnectorAssetsPath/settings.json" -Force
 
-        Copy-Item $customCodePath "$ConnectorAssetsPath/script.csx"
+            Copy-Item $customCodePath "$ConnectorAssetsPath/script.csx"
+        }
     }
 }
 
