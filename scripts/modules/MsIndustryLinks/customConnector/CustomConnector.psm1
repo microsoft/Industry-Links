@@ -66,30 +66,28 @@ function New-CustomConnectorConfig {
     try {
         $config = Get-Content $ConfigFile -Raw | ConvertFrom-Json
 
-        if ($PSCmdlet.ShouldProcess($ConfigFile)) {
-            if (!(Test-Path $OutputDirectory)) {
-                New-Item -Name $OutputDirectory -ItemType Directory | Out-Null
-            }
+        if (!(Test-Path $OutputDirectory)) {
+            New-Item -Name $OutputDirectory -ItemType Directory | Out-Null
+        }
 
-            pac connector init --outputDirectory $OutputDirectory --generate-settings-file | Out-Null
+        pac connector init --outputDirectory $OutputDirectory --generate-settings-file | Out-Null
 
-            # Copy the API definition to the output directory
-            Copy-Item $config.apiDefinition "$OutputDirectory/apiDefinition.json"
+        # Copy the API definition to the output directory
+        Copy-Item $config.apiDefinition "$OutputDirectory/apiDefinition.json"
 
-            # Configure the authentication model of the API using the API definition
-            Set-AuthenticationConfig -ConnectorAssetsPath $OutputDirectory -ConfigFile $ConfigFile
+        # Configure the authentication model of the API using the API definition
+        Set-AuthenticationConfig -ConnectorAssetsPath $OutputDirectory -ConfigFile $ConfigFile
 
-            $iconFile = $config.icon
-            if (Test-Path $iconFile) {
-                # Copy the icon to the output directory and update the settings file
-                Copy-Item $iconFile "$OutputDirectory/icon.png"
-                $settings = (Get-Content "$OutputDirectory/settings.json" -Raw | ConvertFrom-Json)
-                $settings.icon = "icon.png"
-                $settings | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/settings.json" -Force
-            }
-            else {
-                throw "Icon file not found at $iconFile"
-            }
+        $iconFile = $config.icon
+        if (Test-Path $iconFile) {
+            # Copy the icon to the output directory and update the settings file
+            Copy-Item $iconFile "$OutputDirectory/icon.png"
+            $settings = (Get-Content "$OutputDirectory/settings.json" -Raw | ConvertFrom-Json)
+            $settings.icon = "icon.png"
+            $settings | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/settings.json" -Force
+        }
+        else {
+            throw "Icon file not found at $iconFile"
         }
     }
     catch {
@@ -397,17 +395,15 @@ function Set-AuthenticationConfig {
     }
 
     # Output the new API properties configuration to the output directory
-    if ($PSCmdlet.ShouldProcess($ConfigFile)) {
-        $apiProperties | ConvertTo-Json -Depth 100 | Out-File $apiPropertiesPath -Force
+    $apiProperties | ConvertTo-Json -Depth 100 | Out-File $apiPropertiesPath -Force
 
-        # Update the output settings.json to point to custom code if exists
-        if ($customCodePath) {
-            $settings = (Get-Content "$ConnectorAssetsPath/settings.json" -Raw | ConvertFrom-Json)
-            $settings.script = "script.csx"
-            $settings | ConvertTo-Json -Depth 100 | Out-File "$ConnectorAssetsPath/settings.json" -Force
+    # Update the output settings.json to point to custom code if exists
+    if ($customCodePath) {
+        $settings = (Get-Content "$ConnectorAssetsPath/settings.json" -Raw | ConvertFrom-Json)
+        $settings.script = "script.csx"
+        $settings | ConvertTo-Json -Depth 100 | Out-File "$ConnectorAssetsPath/settings.json" -Force
 
-            Copy-Item $customCodePath "$ConnectorAssetsPath/script.csx"
-        }
+        Copy-Item $customCodePath "$ConnectorAssetsPath/script.csx"
     }
 }
 
