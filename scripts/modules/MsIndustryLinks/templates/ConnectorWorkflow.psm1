@@ -38,6 +38,7 @@
     New-MsIndustryLink -WorkflowConfigFile logicapp_workflow.json -OutputDirectory output
 #>
 function New-MsIndustryLink {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
@@ -54,26 +55,30 @@ function New-MsIndustryLink {
     $workflowType = $workflowConfig.workflowType.ToLower()
     $workflowGuids = @{}
 
-    # Create ingestion workflow template
-    $ingestionMetadata = New-DataSinkWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory -AuthConfigFile $AuthConfigFile
-    $workflowGuids[$ingestionMetadata.name] = $ingestionMetadata.guid
+    if ($PSCmdlet.ShouldProcess($OutputDirectory, "Generating Industry Link templates")) {
+        # Create ingestion workflow template
+        $ingestionMetadata = New-DataSinkWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory -AuthConfigFile $AuthConfigFile
+        $workflowGuids[$ingestionMetadata.name] = $ingestionMetadata.guid
 
-    if ("azureblobstorage" -eq $dataSourceType) {
-        # Create transformation workflow template
-        $transformMetadata = New-TransformWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory
-        $workflowGuids[$transformMetadata.name] = $transformMetadata.guid
-    }
-
-    # Create data source workflow template
-    New-DataSourceWorkflow -WorkflowConfigFile $WorkflowConfigFile -TemplateDirectory $OutputDirectory -WorkflowGuids $workflowGuids -AuthConfigFile $AuthConfigFile
-
-    if ("flow" -eq $workflowType) {
-        if ($null -eq $PackageParametersFile -or "" -eq $PackageParametersFile) {
-            throw "PackageParametersFile is required for Flow workflows."
+        if ("azureblobstorage" -eq $dataSourceType) {
+            # Create transformation workflow template
+            $transformMetadata = New-TransformWorkflow -WorkflowConfigFile $WorkflowConfigFile -OutputDirectory $OutputDirectory
+            $workflowGuids[$transformMetadata.name] = $transformMetadata.guid
         }
 
-        # Package Industry Link into a solution
-        New-WorkflowPackage -ParametersFile $PackageParametersFile -TemplateDirectory $OutputDirectory -OutputDirectory $OutputDirectory
+        # Create data source workflow template
+        New-DataSourceWorkflow -WorkflowConfigFile $WorkflowConfigFile -TemplateDirectory $OutputDirectory -WorkflowGuids $workflowGuids -AuthConfigFile $AuthConfigFile
+
+        if ($PSCmdlet.ShouldProcess($OutputDirectory, "Generating Industry Link solution")) {
+            if ("flow" -eq $workflowType) {
+                if ($null -eq $PackageParametersFile -or "" -eq $PackageParametersFile) {
+                    throw "PackageParametersFile is required for Flow workflows."
+                }
+
+                # Package Industry Link into a solution
+                New-WorkflowPackage -ParametersFile $PackageParametersFile -TemplateDirectory $OutputDirectory -OutputDirectory $OutputDirectory
+            }
+        }
     }
 }
 

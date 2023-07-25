@@ -39,6 +39,7 @@
     New-DataSourceWorkflow -WorkflowConfigFile workflow.json -TemplateDirectory templates -AuthConfigFile auth.json
 #>
 function New-DataSourceWorkflow {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
@@ -54,14 +55,14 @@ function New-DataSourceWorkflow {
     $workflowType = $workflowConfig.workflowType.ToLower()
 
     if ($workflowType -eq "logicapp") {
-        $template = New-LogicAppDataSourceWorkflow -WorkflowConfig $workflowConfig
+        $template = Get-LogicAppDataSourceWorkflow -WorkflowConfig $workflowConfig
         $templateFilename = $workflowConfig.name
     }
     elseif ($workflowType -eq "flow") {
         if ($null -eq $WorkflowGuids -or $WorkflowGuids.Count -eq 0) {
-            $WorkflowGuids = Get-WorkflowGuids -TemplateDirectory $TemplateDirectory -WorkflowConfig $workflowConfig
+            $WorkflowGuids = Get-WorkflowGuidMap -TemplateDirectory $TemplateDirectory -WorkflowConfig $workflowConfig
         }
-        $template = New-FlowDataSourceWorkflow -WorkflowConfig $workflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
+        $template = Get-FlowDataSourceWorkflow -WorkflowConfig $workflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
         $templateFilename = $template.properties.displayName
     }
     else {
@@ -74,7 +75,7 @@ function New-DataSourceWorkflow {
     $template | ConvertTo-Json -Depth 20 | Out-File "$TemplateDirectory/$templateFilename.json"
 }
 
-function New-FlowDataSourceWorkflow {
+function Get-FlowDataSourceWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
@@ -91,17 +92,17 @@ function New-FlowDataSourceWorkflow {
     # Configure the data source
     switch ($dataSource) {
         "azureblobstorage" {
-            $template = New-FlowAzureBlobStorageDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
+            $template = Get-FlowAzureBlobStorageDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
             $triggerType = "datasource"
         }
         "customconnector" {
-            $template = New-FlowCustomConnectorDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
+            $template = Get-FlowCustomConnectorDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids -AuthConfigFile $AuthConfigFile
         }
         "dataverse" {
-            $template = New-FlowDataverseDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
+            $template = Get-FlowDataverseDatasourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
         }
         "eventhub" {
-            $template = New-FlowEventHubDataSourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
+            $template = Get-FlowEventHubDataSourceWorkflow -WorkflowConfig $WorkflowConfig -WorkflowGuids $WorkflowGuids
             $triggerType = "datasource"
         }
         default {
@@ -150,7 +151,7 @@ function New-FlowDataSourceWorkflow {
     return $template
 }
 
-function New-FlowCustomConnectorDatasourceWorkflow {
+function Get-FlowCustomConnectorDatasourceWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
@@ -180,7 +181,7 @@ function New-FlowCustomConnectorDatasourceWorkflow {
         }
 
         $authConfig = Get-Content $AuthConfigFile | ConvertFrom-Json
-        $connectorIdentifiers = Get-ConnectorIdentifiers -ConnectorId $dataSourceConfig.connection.connectorId -AuthConfig $authConfig
+        $connectorIdentifiers = Get-ConnectorIdentifier -ConnectorId $dataSourceConfig.connection.connectorId -AuthConfig $authConfig
 
         $apiConfig = $connectorIdentifiers
 
@@ -213,7 +214,7 @@ function New-FlowCustomConnectorDatasourceWorkflow {
     return $baseTemplate
 }
 
-function New-FlowAzureBlobStorageDatasourceWorkflow {
+function Get-FlowAzureBlobStorageDatasourceWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
@@ -254,7 +255,7 @@ function New-FlowAzureBlobStorageDatasourceWorkflow {
     return $baseTemplate
 }
 
-function New-FlowDataverseDatasourceWorkflow {
+function Get-FlowDataverseDatasourceWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
@@ -293,7 +294,7 @@ function New-FlowDataverseDatasourceWorkflow {
     return $baseTemplate
 }
 
-function New-FlowEventHubDataSourceWorkflow {
+function Get-FlowEventHubDataSourceWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
@@ -328,7 +329,7 @@ function New-FlowEventHubDataSourceWorkflow {
     return $baseTemplate
 }
 
-function New-LogicAppDataSourceWorkflow {
+function Get-LogicAppDataSourceWorkflow {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig
@@ -356,7 +357,7 @@ function New-LogicAppDataSourceWorkflow {
             $apiName = @{
                 connectionId         = "[resourceId('Microsoft.Web/connections', '$apiName')]"
                 connectionName       = $apiName
-                connectionProperties = Get-ConnectionProperties -DataSourceType $dataSourceType
+                connectionProperties = Get-ConnectionProperty -DataSourceType $dataSourceType
                 id                   = $apiId
             }
         }
@@ -373,7 +374,7 @@ function New-LogicAppDataSourceWorkflow {
     # Set the custom connector properties if data source is CustomConnector
     $definition = Get-Content $PSScriptRoot/templates/data_source/$dataSourceType/logicapp_$dataSourceType.json | ConvertFrom-Json
     if ($isCustomConnector) {
-        Set-LogicAppCustomConnectorConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
+        Add-LogicAppCustomConnectorConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
     }
 
     # Set the Dataverse queries if defined in the workflow configuration
@@ -383,21 +384,21 @@ function New-LogicAppDataSourceWorkflow {
 
     # Add data transform action if defined in the workflow configuration
     if ($null -ne $WorkflowConfig.dataTransform.type) {
-        Set-LogicAppTransformConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
+        Add-LogicAppTransformConfiguration -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
     }
 
     # Set the data sink workflow ID
     $definition.actions.Ingest_data_subflow.inputs.host.workflow.id = "[resourceId('Microsoft.Logic/workflows', '$($WorkflowConfig.name)_Sink')]"
 
     # Configure the trigger
-    Set-Trigger -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
+    Add-Trigger -WorkflowConfig $WorkflowConfig -Definition $definition | Out-Null
 
     $baseTemplate.definition = $definition
 
     return $baseTemplate
 }
 
-function Get-ConnectorIdentifiers {
+function Get-ConnectorIdentifier {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The custom connector GUID.")]
         [string] $ConnectorId,
@@ -450,7 +451,7 @@ function Get-ConnectorIdentifiers {
     }
 }
 
-function Get-WorkflowGuids {
+function Get-WorkflowGuidMap {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the directory that contains the workflow templates.")]
         [string] $TemplateDirectory,
@@ -530,7 +531,7 @@ function Get-LogicAppApiId {
     return "[subscriptionResourceId('Microsoft.Web/locations/managedApis', parameters('location'), '$apiName')]"
 }
 
-function Get-ConnectionProperties {
+function Get-ConnectionProperty {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The data source type.")]
         [string] $DataSourceType
@@ -574,7 +575,7 @@ function Get-TransformDataSubflow {
     }
 }
 
-function Set-LogicAppCustomConnectorConfiguration {
+function Add-LogicAppCustomConnectorConfiguration {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
@@ -597,7 +598,7 @@ function Set-LogicAppCustomConnectorConfiguration {
     }
 }
 
-function Set-LogicAppTransformConfiguration {
+function Add-LogicAppTransformConfiguration {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
@@ -629,7 +630,7 @@ function Get-TriggerType {
     return $WorkflowConfig.trigger.type
 }
 
-function Set-Trigger {
+function Add-Trigger {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The workflow configuration object.")]
         [object] $WorkflowConfig,
