@@ -35,6 +35,7 @@
     New-AzureDeploymentPackage -WorkflowConfigFile workflow.json -TemplateDirectory templates -OutputDirectory output -ApiDefinitionFile api.swagger.json
 #>
 function New-AzureDeploymentPackage {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The path to the workflow configuration JSON file.")]
         [string] $WorkflowConfigFile,
@@ -94,6 +95,7 @@ function New-AzureDeploymentPackage {
 }
 
 function New-ResourceTemplate {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The name of the workflow.")]
         [string] $WorkflowName,
@@ -109,19 +111,19 @@ function New-ResourceTemplate {
 
     switch ($SubWorkflowConfig.type.ToLower()) {
         "azureblobstorage" {
-            New-BlobStorageTemplates -MainTemplate $MainTemplate -Parameters $SubWorkflowConfig.parameters -OutputDirectory $OutputDirectory
+            New-BlobStorageTemplateSet -MainTemplate $MainTemplate -Parameters $SubWorkflowConfig.parameters -OutputDirectory $OutputDirectory
             break
         }
         "customconnector" {
-            New-CustomConnectorTemplates -MainTemplate $MainTemplate -SubWorkflowConfig $SubWorkflowConfig -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
+            New-CustomConnectorTemplateSet -MainTemplate $MainTemplate -SubWorkflowConfig $SubWorkflowConfig -OutputDirectory $OutputDirectory -ApiDefinitionFile $ApiDefinitionFile
             break
         }
         "dataverse" {
-            New-DataverseTemplates -MainTemplate $MainTemplate -OutputDirectory $OutputDirectory
+            New-DataverseTemplateSet -MainTemplate $MainTemplate -OutputDirectory $OutputDirectory
             break
         }
         "eventhub" {
-            New-EventHubTemplates -WorkflowName $WorkflowName -MainTemplate $MainTemplate -Parameters $SubWorkflowConfig.parameters -OutputDirectory $OutputDirectory
+            New-EventHubTemplateSet -WorkflowName $WorkflowName -MainTemplate $MainTemplate -Parameters $SubWorkflowConfig.parameters -OutputDirectory $OutputDirectory
             break
         }
         Default {
@@ -130,7 +132,8 @@ function New-ResourceTemplate {
     }
 }
 
-function New-BlobStorageTemplates {
+function New-BlobStorageTemplateSet {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
         [object] $MainTemplate,
@@ -176,7 +179,8 @@ function New-BlobStorageTemplates {
     }
 }
 
-function New-CustomConnectorTemplates {
+function New-CustomConnectorTemplateSet {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
         [object] $MainTemplate,
@@ -214,7 +218,7 @@ function New-CustomConnectorTemplates {
         }
 
         $swaggerDefinition = Get-Content $ApiDefinitionFile | ConvertFrom-Json
-        $securityDefinition = ($swaggerDefinition.securityDefinitions.PSObject.Properties | Select -First 1).Value
+        $securityDefinition = ($swaggerDefinition.securityDefinitions.PSObject.Properties | Select-Object -First 1).Value
 
         if ($null -eq $securityDefinition) {
             throw "An API key security definition must be defined."
@@ -246,7 +250,7 @@ function New-CustomConnectorTemplates {
 
     try {
         $connectionLinkedTemplate = Get-LinkedTemplate -Name "$($name)connection" -FileName $fileName -Dependencies $dependencies
-        Add-ConnectionTemplateParameters -MainTemplate $MainTemplate -LinkedTemplate $connectionLinkedTemplate -Parameters $connectionTemplate.parameters -Prefix $name
+        Add-ConnectionTemplateParameterSet -MainTemplate $MainTemplate -LinkedTemplate $connectionLinkedTemplate -Parameters $connectionTemplate.parameters -Prefix $name
         $MainTemplate.resources += $connectionLinkedTemplate
 
         $connectionTemplate | ConvertTo-Json -Depth 100 | Out-File "$OutputDirectory/$fileName"
@@ -256,7 +260,8 @@ function New-CustomConnectorTemplates {
     }
 }
 
-function New-DataverseTemplates {
+function New-DataverseTemplateSet {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
         [object] $MainTemplate,
@@ -275,7 +280,7 @@ function New-DataverseTemplates {
     try {
         $linkedTemplate = Get-LinkedTemplate -Name $connectionName -FileName "connection.dataverse.json"
         $connectionTemplate = Get-Content "$PSScriptRoot/package/azureDeploymentPackage/dataverse/connection.json" | ConvertFrom-Json
-        Add-ConnectionTemplateParameters -MainTemplate $MainTemplate -LinkedTemplate $linkedTemplate -Parameters $connectionTemplate.parameters
+        Add-ConnectionTemplateParameterSet -MainTemplate $MainTemplate -LinkedTemplate $linkedTemplate -Parameters $connectionTemplate.parameters
         $MainTemplate.resources += $linkedTemplate
 
         Copy-Item "$PSScriptRoot/package/azureDeploymentPackage/dataverse/connection.json" "$OutputDirectory/connection.dataverse.json"
@@ -285,7 +290,8 @@ function New-DataverseTemplates {
     }
 }
 
-function New-EventHubTemplates {
+function New-EventHubTemplateSet {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The name of the workflow.")]
         [string] $WorkflowName,
@@ -337,6 +343,7 @@ function New-EventHubTemplates {
 }
 
 function New-LogicAppTemplate {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The name of the sub-workflow.")]
         [string] $Name,
@@ -401,6 +408,7 @@ function New-LogicAppTemplate {
 }
 
 function New-CreateUiDefinition {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
         [object] $MainTemplate,
@@ -418,11 +426,11 @@ function New-CreateUiDefinition {
             $paramValue = $param.Value
             switch ($paramValue.type.ToLower()) {
                 "string" {
-                    $uiDefinition.parameters.basics += New-TextBoxUIElement -Name $param.Name -Label $param.Name -Tooltip $paramValue.metadata.description
+                    $uiDefinition.parameters.basics += Get-TextBoxUIElement -Name $param.Name -Label $param.Name -Tooltip $paramValue.metadata.description
                     break
                 }
                 "securestring" {
-                    $uiDefinition.parameters.basics += New-SecretTextBoxUIElement -Name $param.Name -Label $param.Name -Tooltip $paramValue.metadata.description
+                    $uiDefinition.parameters.basics += Get-SecretTextBoxUIElement -Name $param.Name -Label $param.Name -Tooltip $paramValue.metadata.description
                     break
                 }
                 Default {
@@ -470,7 +478,7 @@ function Get-LinkedTemplate {
     }
 }
 
-function Add-ConnectionTemplateParameters {
+function Add-ConnectionTemplateParameterSet {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "The main ARM template object.")]
         [object] $MainTemplate,
@@ -530,7 +538,7 @@ function Add-ResourceType {
     return $ResourceTypes
 }
 
-function New-TextBoxUIElement {
+function Get-TextBoxUIElement {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
         [string] $Name,
@@ -557,7 +565,7 @@ function New-TextBoxUIElement {
     }
 }
 
-function New-SecretTextBoxUIElement {
+function Get-SecretTextBoxUIElement {
     param (
         [Parameter(Mandatory = $true, HelpMessage = "Name of the solution provider.")]
         [string] $Name,
