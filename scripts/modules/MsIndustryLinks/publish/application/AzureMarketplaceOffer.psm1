@@ -34,6 +34,7 @@
     New-AzureApplicationOffer -AssetsDirectory listingAssets -MarketplacePackageZipFile marketplacePackage.zip -OfferId contoso-industry-link -PlanId contoso-industry-link
 #>
 function New-AzureApplicationOffer {
+    [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory = $True, HelpMessage = "Path to offer assets folder.")]
         [String] $AssetsDirectory,
