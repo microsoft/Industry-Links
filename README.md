@@ -7,10 +7,10 @@ The intent is to minimize the friction for partners to create solutions for Micr
 ## What's Included
 
 - MsIndustryLinks PowerShell module that supports:
-  - Generation of Power Automate workflow templates
-  - Packaging of workflows into a Power Platform solution
-  - Generation of ready-to-publish AppSource offer listing in Partner Center
-- Helper scripts to set up mock APIs and sample data for testing
+  - Configuration and creation of custom connectors
+  - Generation of Power Automate & Logic App workflow templates
+  - Packaging of workflows into a deployable solution
+  - Generation of ready-to-publish offer listings in Partner Center (AppSource and Azure Marketplace)
 
 See [MsIndustryLinks](scripts/modules/MsIndustryLinks/README.md) reference for more information on the cmdlets available for this module.
 
@@ -36,10 +36,10 @@ The templates, modules and scripts in this repository use a combination of the f
 
 Use the following templates to build and publish your own Industry Link! Each use case includes a README file that contains instructions on how to modify, build and publish a solution.
 
-| Solution                                                                  | Use Case                                                                                |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Solution-Aware Power Automate Flows in AppSource](PowerAutomateFlows.md) | Ideal for transfering data between an API or file and Dataverse using Power Platform.   |
-| [Logic App-based Industry Link in Azure Marketplace](LogicApps.md)        | Ideal for transfering data between an API, file, Event Hubs, and Dataverse using Azure. |
+| Solution                                                                  | Use Case                                                                                           |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| [Power Platform hosted](./PowerPlatformHosted.md)                         | Ideal for transfering data between an API, file, Event Hubs, and Dataverse using Power Platform.   |
+| [Azure hosted](./AzureHosted.md)                                          | Ideal for transfering data between an API, file, Event Hubs, and Dataverse using Azure.            |
 
 ## Contributing
 

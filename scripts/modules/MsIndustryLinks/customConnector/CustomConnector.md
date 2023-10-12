@@ -1,8 +1,8 @@
-# Power Platform Custom Connector Certification
+# Power Platform Custom Connectors
 
-The **MsIndustryLinks** module contains commands to automate some of the steps required to build and create a Power Platform custom connector in preparation of making it publicly available to all users outside of your organization through the certification process. See [Getting your connector certified](https://learn.microsoft.com/en-us/connectors/custom-connectors/submit-certification) for more information.
+The **MsIndustryLinks** module contains commands to automate some of the steps required to build and create a Power Platform custom connector. You can then certify your custom connector to make it publicly available to all users outside of your organization. See [Getting your connector certified](https://learn.microsoft.com/en-us/connectors/custom-connectors/submit-certification) for more information.
 
-Use the following steps to prepare your custom connector assets for certification:
+Use the following steps to prepare your custom connector assets:
 
 ## Step 1: Login to your Microsoft Power Platform environment
 
