@@ -2,8 +2,6 @@
 
 There are many options for Microsoft partners when creating solutions to transfer data into and out of the [Microsoft Cloud for Industry](https://www.microsoft.com/en-us/industry/) products. To assist, this repository has created a set of quick start templates to be a starting point for partners with a guidance on technology choice on the most common patterns seen to date.
 
-The intent is to minimize the friction for partners to create solutions for Microsoft Cloud for Industry and over time, we expect to add more patterns as required.
-
 ## What's Included
 
 - MsIndustryLinks PowerShell module that supports:
